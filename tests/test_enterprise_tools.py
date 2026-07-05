@@ -79,6 +79,23 @@ def test_airtable_read_records_success(mocker):
     assert result[0]["fields"]["Name"] == "John Dupont"
 
 
+def test_airtable_create_record_success(mocker):
+    """Test creating a record in Airtable REST API."""
+    mocker.patch.dict(os.environ, {"AIRTABLE_API_KEY": "test_airtable_key"})
+    
+    mock_response = mocker.MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "rec456"
+    }
+    mocker.patch("requests.post", return_value=mock_response)
+
+    tool = AirtableTool()
+    result = tool._run(base_id="app123", table_name="Personnel", data={"Name": "Alice Smith", "Role": "Engineer"})
+    
+    assert "Successfully created record in Airtable: rec456" in result
+
+
 def test_accuweather_weather_conditions_success(mocker):
     """Test fetching weather key and conditions from AccuWeather REST API."""
     mocker.patch.dict(os.environ, {"ACCUWEATHER_API_KEY": "test_accuweather_key"})
