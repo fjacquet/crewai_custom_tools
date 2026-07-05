@@ -1,9 +1,9 @@
 """Resiliency and error handling decorators for API-backed tools."""
 
-import time
 import logging
 import concurrent.futures
 from functools import wraps
+from time import sleep
 from typing import Any, Callable, Optional
 import requests
 
@@ -40,7 +40,7 @@ def api_tool(
                 # Intercept HTTP 429 and retry with sleep
                 if e.response is not None and e.response.status_code == 429:
                     logger.warning(f"Rate limited by {provider} {endpoint}. Retrying...")
-                    time.sleep(2.0)
+                    sleep(2.0)
                     retry_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                     try:
                         retry_future = retry_executor.submit(func, *args, **kwargs)
