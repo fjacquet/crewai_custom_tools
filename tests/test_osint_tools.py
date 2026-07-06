@@ -310,3 +310,43 @@ def test_french_registry_search_success(mocker):
     assert result["company_name"] == "ACME FRANCE SAS"
     assert result["address"] == "10 RUE DE LA PAIX 75002 PARIS"
     assert "Jean Dupont" in result["officers"]
+
+
+# ==============================================================================
+# 5. OpenCorporates Global Search Tests
+# ==============================================================================
+
+def test_opencorporates_search_success(mocker):
+    """Test global corporate registration details lookup via OpenCorporates API."""
+    mock_response = mocker.MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "results": {
+            "companies": [
+                {
+                    "company": {
+                        "name": "ACME GLOBAL LTD",
+                        "company_number": "1234567",
+                        "jurisdiction_code": "gb",
+                        "incorporation_date": "2010-05-20",
+                        "current_status": "Active",
+                        "opencorporates_url": "https://opencorporates.com/companies/gb/1234567",
+                        "registry_url": "https://companieshouse.gov.uk/1234567",
+                        "registered_address_in_full": "123 ACME WAY, LONDON"
+                    }
+                }
+            ]
+        }
+    }
+    mocker.patch("requests.get", return_value=mock_response)
+
+    from crew_custom_tools.tools.osint.corporate_global import OpenCorporatesSearchTool
+    tool = OpenCorporatesSearchTool()
+    result_str = tool._run(query="ACME", jurisdiction_code="gb")
+    result = json.loads(result_str)
+    
+    assert result["query"] == "ACME"
+    assert result["total_results"] == 1
+    assert result["companies"][0]["name"] == "ACME GLOBAL LTD"
+    assert result["companies"][0]["jurisdiction_code"] == "gb"
+

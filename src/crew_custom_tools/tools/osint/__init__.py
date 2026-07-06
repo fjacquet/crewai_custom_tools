@@ -5,6 +5,7 @@ from crew_custom_tools.tools.osint.email_recon import HunterIOTool, SerperEmailS
 from crew_custom_tools.tools.osint.person_recon import UsernameSearchTool
 from crew_custom_tools.tools.osint.domain_recon import CrtShTool, RDAPDomainTool
 from crew_custom_tools.tools.osint.registers import FrenchRegistryTool
+from crew_custom_tools.tools.osint.corporate_global import OpenCorporatesSearchTool
 
 __all__ = [
     "GitHubSearchTool",
@@ -17,4 +18,5 @@ __all__ = [
     "CrtShTool",
     "RDAPDomainTool",
     "FrenchRegistryTool",
+    "OpenCorporatesSearchTool",
 ]
