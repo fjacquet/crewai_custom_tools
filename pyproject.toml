@@ -30,6 +30,7 @@ dependencies = [
     
     # Enterprise APIs
     "todoist-api-python>=2.1.3",
+    "holehe>=1.0.0",
 ]
 
 [project.optional-dependencies]
