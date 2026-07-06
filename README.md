@@ -3,7 +3,7 @@
 > **Centralized, resilient, and high-performance tools for CrewAI multi-agent systems.**
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/fjacquet/crewai-custom-tools/blob/main/LICENSE)
-[![Latest Release](https://img.shields.io/github/v/release/fjacquet/crewai-custom-tools?color=orange)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.0)
+[![Latest Release](https://img.shields.io/github/v/release/fjacquet/crewai-custom-tools?color=orange)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.1)
 [![CI Pipeline](https://github.com/fjacquet/crewai-custom-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/fjacquet/crewai-custom-tools/actions)
 [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://fjacquet.github.io/crewai-custom-tools)
 
@@ -14,7 +14,7 @@
 `crewai-custom-tools` unifies and centralizes overlapping, duplicated, and specialized multi-agent toolkits from five distinct source codebases into a single, cohesive **Universal Monolith (Approach A)** package.
 
 - **Source Code Repository**: [GitHub - fjacquet/crewai-custom-tools](https://github.com/fjacquet/crewai-custom-tools)
-- **Current Version**: [v0.1.0 (Initial Consolidated Release)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.0)
+- **Current Version**: [v0.1.1 (Universal Monolith & MCP Release)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.1)
 - **Interactive Documentation**: [GitHub Pages User Guide](https://fjacquet.github.io/crewai-custom-tools)
 
 ---

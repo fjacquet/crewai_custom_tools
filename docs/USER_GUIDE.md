@@ -3,7 +3,7 @@
 Welcome to the **`crewai-custom-tools`** library! This guide outlines how to install the package, import and configure our consolidated, premium superpower tools, utilize the persistent caching layer and resiliency decorators, and write custom multi-agent scripts out of the box.
 
 * **Source Code Repository**: [GitHub - fjacquet/crewai-custom-tools](https://github.com/fjacquet/crewai-custom-tools)
-* **Latest Release**: [v0.1.0 (Initial Consolidated Release)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.0)
+* **Latest Release**: [v0.1.1 (Universal Monolith & MCP Release)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.1)
 * **Documentation Site**: [GitHub Pages User Guide](https://fjacquet.github.io/crewai-custom-tools)
 
 ---
