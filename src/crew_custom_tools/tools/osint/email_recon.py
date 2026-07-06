@@ -9,18 +9,13 @@ from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Any, List, Optional
 from crew_custom_tools.core.decorators import api_tool
+from crew_custom_tools.models import (
+    HunterIOInput,
+    EpieosLookupInput,
+    HoleheScanInput,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class HunterIOInput(BaseModel):
-    """Input schema for Hunter.io Search."""
-    domain: str = Field(..., description="Domain name to search for emails (e.g., 'google.com').")
-
-
-class SerperEmailSearchInput(BaseModel):
-    """Input schema for Serper email search."""
-    query: str = Field(..., description="The name of the company or topic to scan for emails.")
 
 
 class HunterIOTool(BaseTool):
@@ -44,6 +39,11 @@ class HunterIOTool(BaseTool):
         data = response.json()
         
         return json.dumps(data.get("data", {}))
+
+
+class SerperEmailSearchInput(BaseModel):
+    """Input schema for Serper email search."""
+    query: str = Field(..., description="The name of the company or topic to scan for emails.")
 
 
 class SerperEmailSearchTool(BaseTool):
@@ -88,3 +88,113 @@ class SerperEmailSearchTool(BaseTool):
         if result_list:
             return json.dumps([{"emails": result_list}])
         return json.dumps([{"message": "No emails found"}])
+
+
+class EpieosEmailLookupTool(BaseTool):
+    """Reverse search an email to find linked Google/social profiles and reviews via Epieos."""
+    name: str = "epieos_email_lookup"
+    description: str = (
+        "Silent reverse-search on an email to retrieve linked social media accounts, "
+        "Google profiles, avatars, and user reviews via Epieos."
+    )
+    args_schema: type[BaseModel] = EpieosLookupInput
+
+    @api_tool(provider="Epieos", endpoint="ReverseLookup", default_return="{}")
+    def _run(self, email: str) -> str:
+        """Query Epieos API with keyless web scraping fallback."""
+        api_key = os.getenv("EPIEOS_API_KEY")
+        
+        # 1. Official API Path
+        if api_key:
+            url = f"https://api.epieos.com/v1/reverse-lookup?email={email}&key={api_key}"
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+            return json.dumps(response.json())
+            
+        # 2. Keyless/Scraped Fallback Path
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json"
+        }
+        url = f"https://epieos.com/?q={email}"
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        links = []
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            if any(domain in href for domain in ["google.com", "maps", "youtube", "twitter", "facebook", "linkedin"]):
+                links.append(href)
+                
+        result = {
+            "email": email,
+            "success": True,
+            "provider": "keyless_fallback",
+            "associated_profiles": list(set(links))[:10],
+            "message": "Keyless fallback run. For full Epieos JSON metadata, please configure EPIEOS_API_KEY."
+        }
+        return json.dumps(result)
+
+
+class HoleheEmailScannerTool(BaseTool):
+    """Check where an email is registered across 150+ popular websites in-process."""
+    name: str = "holehe_email_platform_scanner"
+    description: str = (
+        "Scan an email address across 150+ sites (GitHub, Reddit, Twitter, Netflix) "
+        "to check where it has been registered."
+    )
+    args_schema: type[BaseModel] = HoleheScanInput
+
+    @api_tool(provider="Holehe", endpoint="ScanEmail", default_return="[]")
+    def _run(self, email: str) -> str:
+        """Scan email across 150+ sites using the native in-process trio loop."""
+        import trio
+        
+        async def run_scan():
+            import httpx
+            from holehe import core
+            
+            class DummyArgs:
+                onlyused = False
+                nocolor = True
+                noclear = True
+                nopasswordrecovery = False
+                csvoutput = False
+                timeout = 10
+                
+            args = DummyArgs()
+            modules = core.import_submodules("holehe.modules")
+            websites = core.get_functions(modules, args)
+            
+            client = httpx.AsyncClient(timeout=10)
+            out = []
+            try:
+                async with trio.open_nursery() as nursery:
+                    for website in websites:
+                        nursery.start_soon(core.launch_module, website, email, client, out)
+            finally:
+                await client.aclose()
+            return out
+
+        try:
+            raw_results = trio.run(run_scan)
+            hits = [
+                {
+                    "name": item.get("name"),
+                    "exists": item.get("exists", False),
+                    "rate_limit": item.get("rateLimit", False),
+                    "error": item.get("error", False)
+                }
+                for item in raw_results
+                if item.get("exists") is True
+            ]
+            return json.dumps(hits)
+        except Exception as e:
+            logger.error(f"Holehe scan error: {e}")
+            return json.dumps([])

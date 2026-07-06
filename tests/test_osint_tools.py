@@ -139,6 +139,70 @@ def test_serper_email_search(mocker):
     assert "sales@acme.com" in result[0]["emails"]
 
 
+def test_epieos_email_lookup_keyless_success(mocker):
+    """Test Epieos reverse lookup keyless scraping fallback."""
+    mocker.patch.dict(os.environ, {}, clear=True)
+    
+    mock_response = mocker.MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = '<html><body><a href="https://maps.google.com/reviews/123">Review</a></body></html>'
+    mocker.patch("requests.get", return_value=mock_response)
+
+    from crew_custom_tools.tools.osint.email_recon import EpieosEmailLookupTool
+    tool = EpieosEmailLookupTool()
+    result_str = tool._run(email="test@gmail.com")
+    result = json.loads(result_str)
+    
+    assert result["success"] is True
+    assert result["provider"] == "keyless_fallback"
+    assert "https://maps.google.com/reviews/123" in result["associated_profiles"]
+
+
+def test_epieos_email_lookup_api_success(mocker):
+    """Test Epieos reverse lookup using official API key."""
+    mocker.patch.dict(os.environ, {"EPIEOS_API_KEY": "test_epieos_key"})
+    
+    mock_response = mocker.MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "success": True,
+        "email": "test@gmail.com",
+        "data": {"google": {"name": "Test User"}}
+    }
+    mocker.patch("requests.get", return_value=mock_response)
+
+    from crew_custom_tools.tools.osint.email_recon import EpieosEmailLookupTool
+    tool = EpieosEmailLookupTool()
+    result_str = tool._run(email="test@gmail.com")
+    result = json.loads(result_str)
+    
+    assert result["success"] is True
+    assert result["data"]["google"]["name"] == "Test User"
+
+
+def test_holehe_email_platform_scanner_success(mocker):
+    """Test Holehe email platform checker mocking the async trio execution."""
+    async def mock_run_scan():
+        return [
+            {"name": "github", "exists": True, "rateLimit": False, "error": False},
+            {"name": "twitter", "exists": False, "rateLimit": False, "error": False}
+        ]
+        
+    mocker.patch("trio.run", return_value=[
+        {"name": "github", "exists": True, "rateLimit": False, "error": False},
+        {"name": "twitter", "exists": False, "rateLimit": False, "error": False}
+    ])
+
+    from crew_custom_tools.tools.osint.email_recon import HoleheEmailScannerTool
+    tool = HoleheEmailScannerTool()
+    result_str = tool._run(email="test@gmail.com")
+    result = json.loads(result_str)
+    
+    assert len(result) == 1
+    assert result[0]["name"] == "github"
+    assert result[0]["exists"] is True
+
+
 # ==============================================================================
 # 3. Username Recon and Domain Recon Tests
 # ==============================================================================
