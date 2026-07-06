@@ -22,6 +22,26 @@ uv add --editable /Users/fjacquet/Projects/crew_custom_tools
 ### 1.2 Development and C-Library Fallbacks
 Our financial and macroeconomic scoring systems contain robust **pure-Python fallback calculations** using standard `numpy` and `pandas` arrays. This guarantees that you can install and execute all tools on macOS, Linux, or Windows without being blocked by compiling complex system C libraries (like `ta-lib` or `quantlib`).
 
+### 1.3 API Key Reference Registry
+To activate and configure our external API integrations, set the following environment variables. Many OSINT and web tools support a **Hybrid Auth** mode, offering immediate keyless fallbacks out of the box and upgrading automatically when key parameters are set.
+
+| Environment Variable | Target Tool | Status | Provider & Description |
+|---|---|---|---|
+| `PERPLEXITY_API_KEY` | `PerplexitySearchTool` | **STRICTLY REQUIRED** | Perplexity AI. Search & synthesize academic/web news. |
+| `SERPER_API_KEY` | `SerperSearchTool` | **STRICTLY REQUIRED** | Google Serper. Organic Google search. |
+| `GITHUB_TOKEN` | `GitHubSearchTool` | **STRICTLY REQUIRED** | GitHub API. Read public repos, orgs, and issue lists. |
+| `TODOIST_API_KEY` | `TodoistTool` | **STRICTLY REQUIRED** | Todoist. Synchronize tasks and project boards. |
+| `AIRTABLE_API_KEY` | `AirtableTool` | **STRICTLY REQUIRED** | Airtable. Read/write database records. |
+| `ACCUWEATHER_API_KEY` | `AccuWeatherTool` | **STRICTLY REQUIRED** | AccuWeather. Fetch city meteorological conditions. |
+| `COINMARKETCAP_API_KEY` | `CoinMarketCapInfoTool` | **STRICTLY REQUIRED** | CoinMarketCap. Real-time cryptocurrency quotes. |
+| `KRAKEN_API_KEY` / `_SECRET` | `KrakenAssetListTool` | **STRICTLY REQUIRED** | Kraken. Verify account balance quantities. |
+| `RAPIDAPI_KEY` | `UnifiedScraperTool` | *OPTIONAL (FALLBACK)* | ScrapeNinja. Bypasses Cloudflare & JS rendering blockages. |
+| `FIRECRAWL_API_KEY` | `UnifiedScraperTool` | *OPTIONAL (FALLBACK)* | Firecrawl. Dynamic scraping & markdown extraction. |
+| `EPIEOS_API_KEY` | `EpieosEmailLookupTool` | *OPTIONAL (FALLBACK)* | Epieos. Reverse email social-profile lookups. |
+| `OPENCORPORATES_API_KEY` | `OpenCorporatesSearchTool`| *OPTIONAL (FALLBACK)* | OpenCorporates. High-speed global corporate registry. |
+| `FRED_API_KEY` | `FREDMacroTool` | *OPTIONAL (FALLBACK)* | St. Louis Fed. Key macroeconomic indicators. |
+| `ALPHA_VANTAGE_API_KEY` | `AlphaVantageOverviewTool`| *OPTIONAL (FALLBACK)* | Alpha Vantage. Company balance-sheet overview metrics. |
+
 ---
 
 ## 2. Namespace & Exposing the Tools
