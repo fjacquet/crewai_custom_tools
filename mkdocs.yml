@@ -45,7 +45,12 @@ nav:
   - Home: index.md
   - User Guide: USER_GUIDE.md
   - Product Requirements (PRD): PRD.md
-  - Architecture (ADR): ADR-0001-architecture-and-design.md
+  - Architecture (ADRs):
+      - 0001 Core Design: adr/0001-core-architecture-and-design.md
+      - 0002 Universal Monolith: adr/0002-universal-monolith.md
+      - 0003 Native MCP: adr/0003-native-mcp-server.md
+      - 0004 Native Pages: adr/0004-native-pages-deployment.md
+      - 0005 Hybrid OSINTFR: adr/0005-osintfr-hybrid-auth.md
   - Developer Corner:
       - Unified Monolith Spec: superpowers/specs/2026-07-05-crew-custom-tools-universal-monolith.md
       - Library Design Spec: superpowers/specs/2026-07-05-crewai-tools-library-design.md
