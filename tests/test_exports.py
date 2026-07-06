@@ -12,7 +12,10 @@ def test_package_exports():
         GitHubSearchTool,
         RenderReportTool,
         HtmlToPdfTool,
-        TodoistTool
+        TodoistTool,
+        EpieosEmailLookupTool,
+        HoleheEmailScannerTool,
+        OpenCorporatesSearchTool
     )
     assert PerplexitySearchTool is not None
     assert YahooFinanceTickerInfoTool is not None
@@ -25,3 +28,6 @@ def test_package_exports():
     assert RenderReportTool is not None
     assert HtmlToPdfTool is not None
     assert TodoistTool is not None
+    assert EpieosEmailLookupTool is not None
+    assert HoleheEmailScannerTool is not None
+    assert OpenCorporatesSearchTool is not None

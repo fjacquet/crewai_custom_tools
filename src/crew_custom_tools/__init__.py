@@ -22,10 +22,11 @@ from crew_custom_tools.tools.finance.exchange_rate import ExchangeRateTool
 
 # 3. OSINT & Cyber Recon
 from crew_custom_tools.tools.osint.github import GitHubSearchTool, GitHubOrgSearchTool
-from crew_custom_tools.tools.osint.email_recon import HunterIOTool, SerperEmailSearchTool
+from crew_custom_tools.tools.osint.email_recon import HunterIOTool, SerperEmailSearchTool, EpieosEmailLookupTool, HoleheEmailScannerTool
 from crew_custom_tools.tools.osint.person_recon import UsernameSearchTool
 from crew_custom_tools.tools.osint.domain_recon import CrtShTool, RDAPDomainTool
 from crew_custom_tools.tools.osint.registers import FrenchRegistryTool
+from crew_custom_tools.tools.osint.corporate_global import OpenCorporatesSearchTool
 
 # 4. Reports & PDFs formatting
 from crew_custom_tools.reporting.html_generator import RenderReportTool, validate_html
@@ -68,10 +69,13 @@ __all__ = [
     "GitHubOrgSearchTool",
     "HunterIOTool",
     "SerperEmailSearchTool",
+    "EpieosEmailLookupTool",
+    "HoleheEmailScannerTool",
     "UsernameSearchTool",
     "CrtShTool",
     "RDAPDomainTool",
     "FrenchRegistryTool",
+    "OpenCorporatesSearchTool",
     
     # Reporting Tools
     "validate_html",
