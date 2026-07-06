@@ -40,3 +40,6 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/crew_custom_tools"]
+
+[project.scripts]
+crew-custom-tools-mcp = "crew_custom_tools.mcp_server:run"
