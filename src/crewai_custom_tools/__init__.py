@@ -82,6 +82,12 @@ from crewai_custom_tools.tools.osint.hunter_extra import (
     HunterEmailFinderTool,
     HunterEmailVerifierTool,
 )
+from crewai_custom_tools.tools.osint.cli_providers import (
+    SherlockTool,
+    MaigretTool,
+    TheHarvesterTool,
+    NetReconTool,
+)
 
 # 4. Reports & PDFs formatting
 from crewai_custom_tools.reporting.html_generator import RenderReportTool, validate_html
@@ -157,6 +163,10 @@ __all__ = [
     "GoogleNewsRssTool",
     "HunterEmailFinderTool",
     "HunterEmailVerifierTool",
+    "SherlockTool",
+    "MaigretTool",
+    "TheHarvesterTool",
+    "NetReconTool",
     # Reporting Tools
     "validate_html",
     "RenderReportTool",
