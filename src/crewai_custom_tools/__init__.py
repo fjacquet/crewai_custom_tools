@@ -24,6 +24,10 @@ from crewai_custom_tools.tools.web.search_providers import (
     HybridSearchTool,
 )
 from crewai_custom_tools.tools.web.perplexity_structured import PerplexityStructuredTool
+from crewai_custom_tools.tools.web.places import GeoapifyPlacesTool
+from crewai_custom_tools.tools.web.tech_stack import TechStackTool
+from crewai_custom_tools.tools.web.wikipedia_processing import WikipediaProcessingTool
+from crewai_custom_tools.tools.web.rss_aggregator import RSSFeedTool, UnifiedRssTool
 
 # 2. Stocks & Market Data
 from crewai_custom_tools.tools.finance.yfinance_ticker import YahooFinanceTickerInfoTool
@@ -88,6 +92,7 @@ from crewai_custom_tools.tools.osint.cli_providers import (
     TheHarvesterTool,
     NetReconTool,
 )
+from crewai_custom_tools.tools.osint.email_delegator import DelegatingEmailSearchTool
 
 # 4. Reports & PDFs formatting
 from crewai_custom_tools.reporting.html_generator import RenderReportTool, validate_html
@@ -126,6 +131,11 @@ __all__ = [
     "RssFeedParserTool",
     "OpmlParserTool",
     "GoogleFactCheckTool",
+    "GeoapifyPlacesTool",
+    "TechStackTool",
+    "WikipediaProcessingTool",
+    "RSSFeedTool",
+    "UnifiedRssTool",
     "BraveSearchTool",
     "TavilyTool",
     "SerpApiTool",
@@ -173,6 +183,7 @@ __all__ = [
     "GoogleNewsRssTool",
     "HunterEmailFinderTool",
     "HunterEmailVerifierTool",
+    "DelegatingEmailSearchTool",
     "SherlockTool",
     "MaigretTool",
     "TheHarvesterTool",
