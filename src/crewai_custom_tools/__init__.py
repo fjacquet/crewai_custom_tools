@@ -70,6 +70,10 @@ from crewai_custom_tools.tools.finance.market_extras import (
 from crewai_custom_tools.tools.finance.screening import MarketScreeningTool
 from crewai_custom_tools.tools.finance.risk import StandardizedRiskScoringTool
 from crewai_custom_tools.tools.finance.sec import EnhancedSECAnalysisTool
+from crewai_custom_tools.tools.finance.sentiment import (
+    StandardizedSentimentAnalysisTool,
+    CrossAssetSentimentComparatorTool,
+)
 
 # 3. OSINT & Cyber Recon
 from crewai_custom_tools.tools.osint.github import GitHubSearchTool, GitHubOrgSearchTool
@@ -114,6 +118,7 @@ from crewai_custom_tools.reporting.data_centric import (
     DataVisualizationTool,
     StructuredReportTool,
 )
+from crewai_custom_tools.reporting.html_builder import HtmlGeneratorTool
 
 # 5. Workspace Enterprise integrations
 from crewai_custom_tools.enterprise.todoist import TodoistTool
@@ -171,6 +176,8 @@ __all__ = [
     "TwelveDataMultiIndicatorTool",
     "AlphaVantageNewsSentimentTool",
     "ChartImgTool",
+    "StandardizedSentimentAnalysisTool",
+    "CrossAssetSentimentComparatorTool",
     # OSINT Tools
     "GitHubSearchTool",
     "GitHubOrgSearchTool",
@@ -206,6 +213,7 @@ __all__ = [
     "KPITrackerTool",
     "DataVisualizationTool",
     "StructuredReportTool",
+    "HtmlGeneratorTool",
     # Enterprise Tools
     "TodoistTool",
     "AirtableReaderTool",
