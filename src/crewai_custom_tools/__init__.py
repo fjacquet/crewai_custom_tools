@@ -96,6 +96,16 @@ from crewai_custom_tools.reporting.template_renderers import (
     PestelReportRenderer,
     FinancialReportRenderer,
 )
+from crewai_custom_tools.reporting.report_writers import (
+    ReportingTool,
+    UniversalReportTool,
+)
+from crewai_custom_tools.reporting.data_centric import (
+    MetricsCalculatorTool,
+    KPITrackerTool,
+    DataVisualizationTool,
+    StructuredReportTool,
+)
 
 # 5. Workspace Enterprise integrations
 from crewai_custom_tools.enterprise.todoist import TodoistTool
@@ -173,6 +183,12 @@ __all__ = [
     "HtmlToPdfTool",
     "PestelReportRenderer",
     "FinancialReportRenderer",
+    "ReportingTool",
+    "UniversalReportTool",
+    "MetricsCalculatorTool",
+    "KPITrackerTool",
+    "DataVisualizationTool",
+    "StructuredReportTool",
     # Enterprise Tools
     "TodoistTool",
     "AirtableReaderTool",

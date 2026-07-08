@@ -69,6 +69,22 @@ def _build_context(title: str, sections: Optional[List[dict]], **kwargs: Any) ->
     }
 
 
+def default_template_dir() -> Path:
+    """Resolve the packaged templates directory (works in editable + wheel installs)."""
+    return Path(__file__).resolve().parent / "templates"
+
+
+def build_environment(template_dir: Optional[Any] = None) -> Environment:
+    """Build an autoescaping Jinja2 Environment over the templates directory."""
+    tdir = Path(template_dir) if template_dir else default_template_dir()
+    if not tdir.exists():
+        raise FileNotFoundError(f"HTML templates directory not found: {tdir}")
+    return Environment(
+        loader=FileSystemLoader(str(tdir)),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+
+
 class RenderReportToolSchema(BaseModel):
     """Input schema for RenderReportTool."""
 
@@ -105,22 +121,10 @@ class RenderReportTool(BaseTool):
     def __init__(self, template_dir: Optional[str] = None, **kwargs: Any):
         """Initialize the Jinja2 environment."""
         super().__init__(**kwargs)
-        if template_dir:
-            self._template_dir = Path(template_dir)
-        else:
-            # Templates are packaged inside the reporting/ package, so this resolves
-            # correctly in an editable checkout AND a wheel install (site-packages).
-            self._template_dir = Path(__file__).resolve().parent / "templates"
-
-        if not self._template_dir.exists():
-            raise FileNotFoundError(
-                f"HTML templates directory not found: {self._template_dir}"
-            )
-
-        self._env = Environment(
-            loader=FileSystemLoader(str(self._template_dir)),
-            autoescape=select_autoescape(["html", "xml"]),
-        )
+        # Templates are packaged inside the reporting/ package, so this resolves
+        # correctly in an editable checkout AND a wheel install (site-packages).
+        self._template_dir = Path(template_dir) if template_dir else default_template_dir()
+        self._env = build_environment(self._template_dir)
         self._env.filters["date"] = self._format_date
 
     @staticmethod
