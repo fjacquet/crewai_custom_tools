@@ -170,6 +170,25 @@ class UnifiedRssTool(BaseTool):
                 json.dump(rss_feeds.model_dump(), fh, ensure_ascii=False, indent=2)
             logger.info(f"UnifiedRssTool wrote {len(all_feeds)} feeds to {output_file_path}")
 
+        if invalid_sources and invalid_sources_file_path:
+            inv_dir = os.path.dirname(invalid_sources_file_path)
+            if inv_dir:
+                Path(inv_dir).mkdir(parents=True, exist_ok=True)
+            with open(invalid_sources_file_path, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "invalid_sources": sorted(invalid_sources),
+                        "timestamp": datetime.now().isoformat(),
+                        "total_invalid": len(invalid_sources),
+                    },
+                    fh,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            logger.info(
+                f"UnifiedRssTool recorded {len(invalid_sources)} invalid sources to {invalid_sources_file_path}"
+            )
+
         total_articles = sum(len(f.articles) for f in all_feeds)
         return ok(
             {
@@ -240,5 +259,35 @@ class UnifiedRssTool(BaseTool):
         return None
 
     def _scrape_article_content(self, url: str) -> str | None:
-        """Stub: real content-scraping body is added in Task 3 (returns None for now)."""
+        """Scrape readable article text, staying pure-Python-friendly (ADR-0002).
+
+        Order: optional Newspaper3k (only if the caller installed it) -> the in-package
+        resilient UnifiedScraperTool (requests + BeautifulSoup, auto-escalating to
+        ScrapeNinja/Firecrawl when their keys are set) -> None (caller uses the RSS summary).
+        """
+        if not url:
+            return None
+
+        # 1. Best-effort Newspaper3k — never a hard dependency of this package.
+        try:
+            from newspaper import Article as NewspaperArticle
+
+            article = NewspaperArticle(url)
+            article.download()
+            article.parse()
+            if article.text and len(article.text.strip()) > 100:
+                return str(article.text)
+        except Exception as exc:  # noqa: BLE001 — ImportError or any scrape error
+            logger.debug(f"Newspaper3k unavailable/failed for {url}: {exc}")
+
+        # 2. Fall back to the package's own resilient scraper.
+        try:
+            payload = json.loads(self._get_scraper()._run(url=url))
+            if payload.get("success"):
+                content = (payload.get("data") or {}).get("content")
+                if content:
+                    return str(content)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"UnifiedScraperTool failed for {url}: {exc}")
+
         return None
