@@ -4,6 +4,26 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.4.0] - 2026-07-14
+
+### Breaking
+
+- `PerplexitySearchTool`: `focus`/`recency` params replaced by `model`/`top_k`/`search_recency`/`search_domain_filter`; construction now raises `ValueError` without `PERPLEXITY_API_KEY` (or legacy `PPLX_API_KEY`). The recency filter is now actually sent (`search_recency_filter`).
+- `crewai` floor raised to `>=1.15.1`.
+- MCP server: without a Perplexity key, `perplexity_search` is no longer listed by the MCP server (previously listed and errored per-call); the server itself still starts and serves all other tools.
+
+### Added
+
+- `parse_tool_result()` / `ToolResultError`: canonical envelope parsing for programmatic consumers.
+- `require_api_key()`: fail-fast key validation with multi-var fallback.
+- Provider-keyed synchronous rate limiter, enforced by `@api_tool` (disable with `CREWAI_TOOLS_RATE_LIMIT_DISABLED=1`).
+- `perplexity_structured()` async function (JSON-schema structured research, ported from finwiz).
+- `prefetched_data` batch mode on `YahooFinanceTickerInfoTool` and `YahooFinanceHistoryTool`.
+- Yahoo ticker/history results now carry `timestamp` / `market_time` / `data_time` / `data_source`; ticker info gains finwiz's extended fundamental fields.
+- `YahooFinanceCompanyInfoTool`: revenue growth calculated from actual financials; `debt_to_equity` converted to a ratio.
+
+---
+
 ## [0.3.1] - 2026-07-09
 
 ### Fixed
