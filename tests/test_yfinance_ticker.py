@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from crewai_custom_tools.core.results import parse_tool_result
 from crewai_custom_tools.tools.finance.yfinance_ticker import (
     GetTickerInfoInput,
     YahooFinanceTickerInfoTool,
@@ -90,7 +91,10 @@ def test_run_success_stock(ticker_info_tool_instance, mocker):
         "sector": "Technology",
         "industry": "Consumer Electronics",
     }
-    assert data == expected_data
+    for key, value in expected_data.items():
+        assert data[key] == value
+    assert data["data_source"] == "live_api"
+    assert "timestamp" in data
     mock_yf_ticker.assert_called_once_with("AAPL")
 
 
@@ -127,7 +131,10 @@ def test_run_success_etf(ticker_info_tool_instance, mocker):
         "52wk_high": 250.00,
         "52wk_low": 200.00,
     }
-    assert data == expected_data
+    for key, value in expected_data.items():
+        assert data[key] == value
+    assert data["data_source"] == "live_api"
+    assert "timestamp" in data
 
 
 def test_run_success_with_regular_market_price(ticker_info_tool_instance, mocker):
@@ -159,7 +166,11 @@ def test_run_minimal_data(ticker_info_tool_instance, mocker):
     mock_yf_ticker.return_value = mock_ticker_instance
 
     data = _data(ticker_info_tool_instance._run(ticker="MINI"))
-    assert data == {"symbol": "MINI", "name": "Minimal Corp", "currency": "EUR"}
+    assert data["symbol"] == "MINI"
+    assert data["name"] == "Minimal Corp"
+    assert data["currency"] == "EUR"
+    assert data["data_source"] == "live_api"
+    assert "timestamp" in data
 
 
 def test_run_yfinance_exception(ticker_info_tool_instance, mocker):
@@ -187,3 +198,43 @@ def test_run_invalid_ticker_empty_info(ticker_info_tool_instance, mocker):
     payload = json.loads(ticker_info_tool_instance._run(ticker="INVALID"))
     assert payload["success"] is False
     assert "No data for ticker INVALID" in payload["error"]
+
+
+def test_prefetched_data_short_circuits_network(mocker):
+    from crewai_custom_tools.tools.finance import yfinance_ticker
+
+    ticker_spy = mocker.patch.object(yfinance_ticker.yf, "Ticker")
+    tool = yfinance_ticker.YahooFinanceTickerInfoTool()
+    raw = tool._run(ticker="AAPL", prefetched_data={"AAPL": {"symbol": "AAPL", "current_price": 123.0}})
+    data = parse_tool_result(raw)
+    assert data["current_price"] == 123.0
+    assert data["data_source"] == "prefetched"
+    ticker_spy.assert_not_called()
+
+
+def test_live_result_includes_extended_fields_and_metadata(mocker):
+    from crewai_custom_tools.tools.finance import yfinance_ticker
+
+    mocker.patch.object(
+        yfinance_ticker.yf,
+        "Ticker",
+        return_value=mocker.Mock(
+            info={
+                "shortName": "Apple",
+                "currentPrice": 190.0,
+                "returnOnEquity": 1.5,
+                "debtToEquity": 152.4,
+                "profitMargins": 0.25,
+                "beta3Year": 1.1,
+                "regularMarketTime": 1750000000,
+            }
+        ),
+    )
+    data = parse_tool_result(yfinance_ticker.YahooFinanceTickerInfoTool()._run(ticker="AAPL"))
+    assert data["return_on_equity"] == 1.5
+    assert data["debt_to_equity"] == 152.4
+    assert data["profit_margins"] == 0.25
+    assert data["beta"] == 1.1  # falls back to beta3Year
+    assert data["data_source"] == "live_api"
+    assert "timestamp" in data
+    assert "market_time" in data

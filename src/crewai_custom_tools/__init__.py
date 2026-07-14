@@ -1,6 +1,6 @@
 """Centralized CrewAI custom tools library."""
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 # 1. Web Search & Scraping
 from crewai_custom_tools.tools.web.perplexity import PerplexitySearchTool
@@ -126,6 +126,12 @@ from crewai_custom_tools.enterprise.airtable import AirtableReaderTool, Airtable
 from crewai_custom_tools.enterprise.accuweather import AccuWeatherTool
 from crewai_custom_tools.enterprise.rag_tools import SaveToRagTool
 
+# 6. Core helpers (programmatic consumers)
+from crewai_custom_tools.core.keys import require_api_key
+from crewai_custom_tools.core.rate_limiter import get_rate_limiter
+from crewai_custom_tools.core.results import ToolResultError, ok, err, parse_tool_result
+from crewai_custom_tools.tools.web.perplexity_structured import perplexity_structured
+
 __all__ = [
     # Web Tools
     "PerplexitySearchTool",
@@ -220,4 +226,12 @@ __all__ = [
     "AirtableTool",
     "AccuWeatherTool",
     "SaveToRagTool",
+    # Core helpers
+    "require_api_key",
+    "get_rate_limiter",
+    "ToolResultError",
+    "ok",
+    "err",
+    "parse_tool_result",
+    "perplexity_structured",
 ]

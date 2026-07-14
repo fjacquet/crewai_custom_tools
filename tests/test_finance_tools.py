@@ -5,7 +5,9 @@ import json
 import os
 
 import pandas as pd
+import pytest
 
+from crewai_custom_tools.core.results import parse_tool_result
 from crewai_custom_tools.tools.finance.company_info import YahooFinanceCompanyInfoTool
 from crewai_custom_tools.tools.finance.crypto import (
     CoinMarketCapInfoTool,
@@ -58,6 +60,43 @@ def test_yfinance_company_info(mocker):
     assert data["name"] == "Apple Inc."
     assert data["industry"] == "Consumer Electronics"
     assert data["financial_metrics"]["revenue"] == 380000000000
+
+
+def _company_info_mock(mocker, info, financials):
+    from crewai_custom_tools.tools.finance import company_info
+
+    ticker = mocker.Mock(info=info)
+    ticker.financials = financials
+    mocker.patch.object(company_info.yf, "Ticker", return_value=ticker)
+    return company_info.YahooFinanceCompanyInfoTool()
+
+
+def test_company_info_calculates_revenue_growth_from_financials(mocker):
+    import pandas as pd
+
+    financials = pd.DataFrame(
+        {"2026": [200.0], "2025": [100.0]}, index=["Total Revenue"]
+    )
+    tool = _company_info_mock(
+        mocker,
+        info={"longName": "Apple", "debtToEquity": 152.41, "revenueGrowth": 0.99},
+        financials=financials,
+    )
+    data = parse_tool_result(tool._run(ticker="AAPL"))
+    assert data["financial_metrics"]["revenue_growth"] == 1.0  # (200-100)/100, NOT info's 0.99
+    assert data["financial_metrics"]["debt_to_equity"] == pytest.approx(1.5241)
+
+
+def test_company_info_falls_back_to_info_field(mocker):
+    import pandas as pd
+
+    tool = _company_info_mock(
+        mocker,
+        info={"longName": "Apple", "revenueGrowth": 0.15},
+        financials=pd.DataFrame(),
+    )
+    data = parse_tool_result(tool._run(ticker="AAPL"))
+    assert data["financial_metrics"]["revenue_growth"] == 0.15
 
 
 def test_yfinance_etf_holdings(mocker):
@@ -311,6 +350,36 @@ def test_yfinance_history_zero_earliest_close(mocker):
     data = _data(YahooFinanceHistoryTool()._run(ticker="ZZ"))
 
     assert data["summary"]["price_change_percent"] is None
+
+
+def test_history_prefetched_data_short_circuits_network(mocker):
+    from crewai_custom_tools.tools.finance import history_holdings
+
+    ticker_spy = mocker.patch.object(history_holdings.yf, "Ticker")
+    tool = history_holdings.YahooFinanceHistoryTool()
+    raw = tool._run(ticker="AAPL", prefetched_data={"AAPL": {"summary": {"symbol": "AAPL"}}})
+    data = parse_tool_result(raw)
+    assert data["data_source"] == "prefetched"
+    ticker_spy.assert_not_called()
+
+
+def test_history_live_result_has_timestamps(mocker):
+    import pandas as pd
+
+    from crewai_custom_tools.tools.finance import history_holdings
+
+    frame = pd.DataFrame(
+        {"Open": [1.0, 2.0], "High": [1.5, 2.5], "Low": [0.5, 1.5], "Close": [1.2, 2.2], "Volume": [100, 200]},
+        index=pd.to_datetime(["2026-07-01", "2026-07-02"]),
+    )
+    mocker.patch.object(
+        history_holdings.yf, "Ticker", return_value=mocker.Mock(history=mocker.Mock(return_value=frame))
+    )
+    data = parse_tool_result(history_holdings.YahooFinanceHistoryTool()._run(ticker="AAPL"))
+    assert data["data_source"] == "live_api"
+    assert "timestamp" in data
+    assert data["data_time"].startswith("2026-07-02")
+    assert data["summary"]["data_points"] == 2
 
 
 def test_kraken_asset_list_success(mocker):
