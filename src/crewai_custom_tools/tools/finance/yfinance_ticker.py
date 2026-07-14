@@ -2,6 +2,9 @@
 Tool for fetching Yahoo Finance Ticker Information.
 """
 
+from datetime import UTC, datetime
+from typing import Any
+
 import yfinance as yf
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -36,8 +39,14 @@ class YahooFinanceTickerInfoTool(BaseTool):
     args_schema: type[BaseModel] = GetTickerInfoInput
 
     @api_tool(provider="YahooFinance", endpoint="TickerInfo")
-    def _run(self, ticker: str) -> str:
+    def _run(self, ticker: str, prefetched_data: dict | None = None) -> str:
         """Execute the Yahoo Finance ticker info lookup."""
+        # Batch mode: pre-fetched data short-circuits cache and network entirely.
+        if prefetched_data is not None and ticker in prefetched_data:
+            cached_info: dict[str, Any] = dict(prefetched_data[ticker])
+            cached_info["data_source"] = "prefetched"
+            return ok(cached_info)
+
         cache = get_cache_manager()
         cache_key = f"yahoo_ticker_info_{ticker}"
 
@@ -64,10 +73,17 @@ class YahooFinanceTickerInfoTool(BaseTool):
             "52wk_low": info.get("fiftyTwoWeekLow", "N/A"),
             "pe_ratio": info.get("trailingPE", "N/A"),
             "forward_pe": info.get("forwardPE", "N/A"),
-            "beta": info.get("beta", "N/A"),
             "dividend_yield": info.get("dividendYield", "N/A"),
             "sector": info.get("sector", "N/A"),
             "industry": info.get("industry", "N/A"),
+            "beta": info.get("beta", info.get("beta3Year", "N/A")),
+            "return_on_equity": info.get("returnOnEquity", "N/A"),
+            "debt_to_equity": info.get("debtToEquity", "N/A"),
+            "revenue_growth": info.get("revenueGrowth", "N/A"),
+            "profit_margins": info.get("profitMargins", "N/A"),
+            "total_assets": info.get("totalAssets", "N/A"),
+            "nav_price": info.get("navPrice", "N/A"),
+            "expense_ratio": info.get("annualReportExpenseRatio", "N/A"),
         }
         result = {k: v for k, v in fields.items() if v != "N/A"}
 
@@ -75,6 +91,14 @@ class YahooFinanceTickerInfoTool(BaseTool):
         # Signal a failure and do NOT cache it, so a transient miss can recover.
         if set(result) <= {"symbol"}:
             return err(f"No data for ticker {ticker}")
+
+        result["timestamp"] = datetime.now(UTC).isoformat()
+        if "regularMarketTime" in info:
+            try:
+                result["market_time"] = datetime.fromtimestamp(info["regularMarketTime"], tz=UTC).isoformat()
+            except (ValueError, TypeError, OSError):
+                pass
+        result["data_source"] = "live_api"
 
         envelope = ok(result)
         cache.set(cache_key, envelope)
