@@ -3,7 +3,7 @@
 Welcome to the **`crewai-custom-tools`** library! This guide outlines how to install the package, import and configure our consolidated, premium superpower tools, utilize the persistent caching layer and resiliency decorators, and write custom multi-agent scripts out of the box.
 
 * **Source Code Repository**: [GitHub - fjacquet/crewai-custom-tools](https://github.com/fjacquet/crewai-custom-tools)
-* **Latest Release**: [v0.1.1 (Universal Monolith & MCP Release)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.1.1)
+* **Latest Release**: [v0.6.0 (Analytics & Files Tool Surface)](https://github.com/fjacquet/crewai-custom-tools/releases/tag/v0.6.0)
 * **Documentation Site**: [GitHub Pages User Guide](https://fjacquet.github.io/crewai-custom-tools)
 
 ---
@@ -50,7 +50,7 @@ To activate and configure our external API integrations, set the following envir
 
 ## 2. Namespace & Exposing the Tools
 
-To maximize convenience for multi-agent LLM systems, **all 30+ custom tools and decorators are exposed directly from the package-level root namespace**:
+To maximize convenience for multi-agent LLM systems, **all 93 custom tools and decorators are exposed directly from the package-level root namespace**:
 
 ```python
 # Import anything cleanly from the root namespace!

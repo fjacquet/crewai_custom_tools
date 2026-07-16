@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`crewai-custom-tools` is a **Universal Monolith** Python package (Python ≥3.11) that centralizes **87 Pydantic-validated tools** for CrewAI multi-agent systems — ported from three source repos (`finwiz`, `osint_tools`, `epic_news`) — into a single, zero-config installable library. Tools cover five domains: Web Search/Scraping, Finance/Markets, OSINT recon, Report/PDF compilation, and Enterprise integrations. Every tool returns a uniform `ToolResult` JSON envelope, and all tools are exposed over MCP via a FastMCP stdio server (full parity, auto-registered).
+`crewai-custom-tools` is a **Universal Monolith** Python package (Python ≥3.11) that centralizes **93 Pydantic-validated tools** for CrewAI multi-agent systems — ported from three source repos (`finwiz`, `osint_tools`, `epic_news`) — into a single, zero-config installable library. Tools cover six domains: Web Search/Scraping, Finance/Markets, OSINT recon, Report/PDF compilation, Enterprise integrations, and Files. Every tool returns a uniform `ToolResult` JSON envelope, and all tools are exposed over MCP via a FastMCP stdio server (full parity, auto-registered).
 
 ## Commands
 
@@ -64,7 +64,7 @@ OSINT/scraper tools default to **keyless/free fallbacks** and auto-upgrade to th
 HTML templates live **inside the package** at `reporting/templates/` and are resolved via `Path(__file__).parent / "templates"` (`default_template_dir()` in `html_generator.py`), so they ship in the wheel and work on a plain `pip install`. Reporting tools share `build_environment()`; untrusted section content is escaped (`_sections_to_html`) — do not reintroduce `| safe` on agent-supplied content.
 
 ## Testing conventions
-- **224 tests, 100% offline/mocked** — the whole suite runs in seconds with no network. Use `pytest-mock`'s `mocker`: `mocker.patch("requests.get", ...)` for HTTP and `mocker.patch.dict(os.environ, {...})` for keys. Assert on the envelope (`json.loads(result)["success"]`), not on prose strings.
+- **423 tests, 100% offline/mocked** — the whole suite runs in seconds with no network. Use `pytest-mock`'s `mocker`: `mocker.patch("requests.get", ...)` for HTTP and `mocker.patch.dict(os.environ, {...})` for keys. Assert on the envelope (`json.loads(result)["success"]`), not on prose strings.
 - New tools require a mocked success-path test and an error/no-key-path test (asserting `success is False`), plus the export in `__all__`.
 - There is no `conftest.py` — fixtures come from `pytest-mock`. Test files live under `tests/` per domain (e.g. `test_finance_tools.py`, `test_search_providers.py`).
 

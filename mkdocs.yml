@@ -52,7 +52,10 @@ nav:
       - 0004 Native Pages: adr/0004-native-pages-deployment.md
       - 0005 Hybrid OSINTFR: adr/0005-osintfr-hybrid-auth.md
   - Developer Corner:
-      - Unified Monolith Spec: superpowers/specs/2026-07-05-crewai-custom-tools-universal-monolith.md
+      - Unified Monolith Spec: superpowers/specs/2026-07-05-crew-custom-tools-universal-monolith.md
       - Library Design Spec: superpowers/specs/2026-07-05-crewai-tools-library-design.md
-      - Unified Monolith Plan: superpowers/plans/2026-07-05-crewai-custom-tools-universal-monolith-plan.md
+      - OSINTFR Integration Spec: superpowers/specs/2026-07-05-osintfr-tools-integration-design.md
+      - Unified Monolith Plan: superpowers/plans/2026-07-05-crew-custom-tools-universal-monolith-plan.md
       - Library Handoff Plan: superpowers/plans/2026-07-05-crewai-tools-reusable-library.md
+      - OSINTFR Integration Plan: superpowers/plans/2026-07-05-osintfr-tools-integration-plan.md
+      - Proper Centralization Plan: superpowers/plans/2026-07-08-proper-centralization-plan.md
