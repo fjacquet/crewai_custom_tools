@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crewai-custom-tools"
-version = "0.6.1"
+version = "0.6.2"
 description = "Centralized, resilient tools for CrewAI multi-agent systems"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,6 +45,13 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/crewai_custom_tools"]
+
+[tool.uv]
+# crewai pins json-repair~=0.25.2, which is vulnerable to GHSA-xf7x-x43h-rpqh
+# (unbounded CPU DoS via circular $ref, only reachable through the schema=
+# kwarg). crewai only calls the plain repair_json(text) form, never schema=,
+# so forcing the patched version is safe.
+override-dependencies = ["json-repair>=0.60.1"]
 
 [project.scripts]
 crewai-custom-tools-mcp = "crewai_custom_tools.mcp_server:run"

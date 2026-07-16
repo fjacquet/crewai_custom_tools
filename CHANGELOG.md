@@ -4,6 +4,14 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.6.2] - 2026-07-16
+
+### Security
+
+- Pinned `json-repair` to `>=0.60.1` via `[tool.uv] override-dependencies`, fixing [GHSA-xf7x-x43h-rpqh](https://github.com/advisories/GHSA-xf7x-x43h-rpqh) (CVSS 7.5, high) — an unbounded-loop CPU DoS in `SchemaRepairer.resolve_schema()` triggered by a circular JSON Schema `$ref`. `json-repair` is a transitive dependency pulled in by `crewai` (`crewai~=1.15.2` pins `json-repair~=0.25.2`, itself vulnerable); `crewai` only calls the plain `repair_json(text)` form and never passes the `schema=` kwarg that reaches the vulnerable code path, so the override is a safe, non-breaking upgrade (0.25.3 → 0.61.2 in `uv.lock`).
+
+---
+
 ## [0.6.1] - 2026-07-16
 
 ### Fixed
