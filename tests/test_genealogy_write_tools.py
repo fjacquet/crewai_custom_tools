@@ -81,3 +81,24 @@ def test_update_name_no_change_when_already_mixed(mocker):
     _mock(mocker, handler)
     payload = json.loads(GrampsUpdateNameTool()._run(handle="h2"))
     assert payload["success"] is True and payload["data"]["changes"] == []
+
+
+def test_update_name_refuses_non_case_only_change(mocker):
+    # Si normalize_case renvoyait une valeur RÉ-ORTHOGRAPHIÉE (pas seulement recasée),
+    # l'invariant doit refuser : err, et AUCUN PUT.
+    mocker.patch(
+        "crewai_custom_tools.tools.genealogy.gramps.write_tools.normalize_case",
+        return_value="Xyz",
+    )
+
+    def handler(request):
+        if request.url.path == "/api/token/":
+            return httpx.Response(200, json={"access_token": "t"})
+        if request.method == "GET":
+            return httpx.Response(200, json=PERSON)
+        raise AssertionError("aucun PUT attendu quand l'invariant refuse")
+
+    _mock(mocker, handler)
+    payload = json.loads(GrampsUpdateNameTool()._run(handle="h1"))
+    assert payload["success"] is False
+    assert "casse" in payload["error"].lower()
