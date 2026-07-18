@@ -20,7 +20,7 @@ def _cap(word: str) -> str:
 
 
 def _recase_token(token: str) -> str:
-    """Recase one space-delimited token, handling hyphens, apostrophes, Mc/Mac."""
+    """Recase one space-delimited token, handling hyphens and apostrophes."""
     if "-" in token:
         return "-".join(_recase_token(part) for part in token.split("-"))
     if "'" in token:
@@ -28,11 +28,6 @@ def _recase_token(token: str) -> str:
         if prefix.lower() in ("d", "l"):          # particule élidée d'/l'
             return prefix.lower() + "'" + _recase_token(rest)
         return _cap(prefix) + "'" + _recase_token(rest)   # O'Brien
-    low = token.lower()
-    if low.startswith("mac") and len(token) > 3:
-        return "Mac" + _cap(token[3:])
-    if low.startswith("mc") and len(token) > 2:
-        return "Mc" + _cap(token[2:])
     return _cap(token)
 
 
