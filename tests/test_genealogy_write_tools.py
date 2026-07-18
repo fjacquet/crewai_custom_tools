@@ -102,3 +102,48 @@ def test_update_name_refuses_non_case_only_change(mocker):
     payload = json.loads(GrampsUpdateNameTool()._run(handle="h1"))
     assert payload["success"] is False
     assert "casse" in payload["error"].lower()
+
+
+def test_update_name_skips_incomplete_fields(mocker):
+    # Prénom incomplet (MARIE2) NON écrit ; nom propre (JACQUET) recasé.
+    person = {"handle": "h3", "gramps_id": "I0003",
+              "primary_name": {"first_name": "MARIE2",
+                               "surname_list": [{"surname": "JACQUET", "prefix": "", "primary": True}]}}
+    puts = []
+
+    def handler(request):
+        if request.url.path == "/api/token/":
+            return httpx.Response(200, json={"access_token": "t"})
+        if request.method == "GET":
+            return httpx.Response(200, json=person)
+        if request.method == "PUT":
+            puts.append(json.loads(request.content))
+            return httpx.Response(200, json={})
+        return httpx.Response(404)
+
+    _mock(mocker, handler)
+    payload = json.loads(GrampsUpdateNameTool()._run(handle="h3"))
+    assert payload["success"] is True
+    fields = {c["field"] for c in payload["data"]["changes"]}
+    assert "first_name" not in fields          # incomplet → jamais écrit
+    assert "surname[0]" in fields               # propre → recasé
+    # le PUT n'a pas touché le prénom incomplet
+    assert puts and puts[0]["primary_name"]["first_name"] == "MARIE2"
+    assert puts[0]["primary_name"]["surname_list"][0]["surname"] == "Jacquet"
+
+
+def test_update_name_all_incomplete_no_put(mocker):
+    person = {"handle": "h4", "gramps_id": "I0004",
+              "primary_name": {"first_name": "JEAN?",
+                               "surname_list": [{"surname": "DUPONT2", "primary": True}]}}
+
+    def handler(request):
+        if request.url.path == "/api/token/":
+            return httpx.Response(200, json={"access_token": "t"})
+        if request.method == "GET":
+            return httpx.Response(200, json=person)
+        raise AssertionError("aucun PUT : tous les champs sont incomplets")
+
+    _mock(mocker, handler)
+    payload = json.loads(GrampsUpdateNameTool()._run(handle="h4"))
+    assert payload["success"] is True and payload["data"]["changes"] == []

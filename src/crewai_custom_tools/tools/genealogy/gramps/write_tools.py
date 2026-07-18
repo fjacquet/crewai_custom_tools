@@ -15,6 +15,7 @@ from crewai_custom_tools.core.results import err, ok
 from crewai_custom_tools.tools.genealogy.gramps.client import get_client
 from crewai_custom_tools.tools.genealogy.standardize.names import (
     is_case_only_change,
+    is_incomplete_name,
     needs_normalization,
     normalize_case,
 )
@@ -50,7 +51,7 @@ class GrampsUpdateNameTool(BaseTool):
         # Prénom (first_name) et nom (surname_list) sont traités comme deux champs
         # DISTINCTS ; chaque changement porte son `kind` ("prénom" / "nom").
         first = name.get("first_name", "")
-        if needs_normalization(first):
+        if needs_normalization(first) and not is_incomplete_name(first):
             new_first = normalize_case(first)
             if new_first != first:
                 if not is_case_only_change(first, new_first):
@@ -61,7 +62,7 @@ class GrampsUpdateNameTool(BaseTool):
 
         for idx, entry in enumerate(name.get("surname_list") or []):
             surname = entry.get("surname", "")
-            if not needs_normalization(surname):
+            if not needs_normalization(surname) or is_incomplete_name(surname):
                 continue
             new_surname = normalize_case(surname)
             if new_surname == surname:
