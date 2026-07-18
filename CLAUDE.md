@@ -56,7 +56,7 @@ Each tool is a `crewai.tools.BaseTool` subclass paired with a Pydantic `BaseMode
 ### Gramps data notes (for genealogy tools)
 - Fetch people efficiently: `GET /api/people/?profile=all&extend=event_ref_list` returns human strings + citation counts (`profile`) AND raw dates (`extended.events`) in one call per page.
 - Dates: compare via the integer `sortval` (Julian day; `0` = unknown/unsortable). Undated events come back as `dateval=[0,0,0,False]`, `year=0`, `sortval=0` (not empty). Text-only dates have `modifier==6`; `quality` valid 0–2, `modifier` valid 0–6. Gender int: `0=F, 1=M, 2=U`.
-- Write policy: casing/whitespace = *form* → direct write OK, guarded by a case-only invariant (`is_case_only_change`); anything asserting a *fact* needs a source → proposal. `GENECREW_DRY_RUN`/`dry_run` params gate writes.
+- Write policy: casing = *form* → direct write OK, guarded by a case-only invariant (`is_case_only_change`, which refuses any non-casing change incl. whitespace); anything asserting a *fact* needs a source → proposal. Writes are gated by both the per-call `dry_run` param and the global `GENECREW_DRY_RUN` env switch (if true, every write is simulated).
 
 ### Two-surface exposure
 Every tool is reachable two ways:
