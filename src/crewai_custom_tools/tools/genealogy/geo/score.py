@@ -50,4 +50,5 @@ def best_similarity(asked: str, returned: str) -> float:
     """Meilleure similarité entre `asked` et une forme-cœur de `returned`. Monotone :
     toujours >= similarity(asked, returned) — les exacts restent 1.0, les décorations
     ('(VD)', alias multi-scripts) ne dépriment plus le score."""
-    return max((similarity(asked, f) for f in _forms(returned)), default=0.0)
+    return max(similarity(asked, returned),
+               max((similarity(asked, f) for f in _forms(returned)), default=0.0))

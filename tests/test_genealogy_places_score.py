@@ -32,7 +32,8 @@ def test_best_similarity_multiscript_token():
 def test_best_similarity_monotone_ge_similarity():
     from crewai_custom_tools.tools.genealogy.geo.score import best_similarity, similarity
     for a, b in [("Lausanne", "Lausanne (VD)"), ("Aix en Provence", "Aix-en-Provence"),
-                 ("Paris", "Marseille"), ("x", "y")]:
+                 ("Paris", "Marseille"), ("x", "y"),
+                 ("", ""), ("", "   "), ("Paris", "")]:
         assert best_similarity(a, b) >= similarity(a, b)
 
 def test_best_similarity_no_substring_inflation():
