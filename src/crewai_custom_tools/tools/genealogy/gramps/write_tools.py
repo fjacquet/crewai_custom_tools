@@ -319,3 +319,121 @@ class GrampsMergePlacesTool(BaseTool):
         if not dry_run:
             get_client().request("POST", f"/places/{keep_handle}/merge/{merge_handle}")
         return ok(change)
+
+
+# --- Écriture encadrée append-only pour la crew : notes + tags (seul le Chroniqueur les a) ---
+
+
+class GrampsCreateNoteInput(BaseModel):
+    text: str = Field(..., description="Note body text (plain string).")
+    note_type: str = Field("Research", description="Gramps note type string (e.g. 'Research').")
+    dry_run: bool = Field(False, description="If true, POST nothing and return a synthetic handle.")
+
+
+class GrampsCreateNoteTool(BaseTool):
+    """Create a Gramps note (append-only annotation). Returns its handle (synthetic in dry-run)."""
+
+    name: str = "gramps_create_note"
+    description: str = (
+        "Creates a Gramps note carrying free text (e.g. an audit finding marked "
+        "'[genecrew:audit:<date>:detective]'). Returns the new note handle. In dry-run (flag or "
+        "GENECREW_DRY_RUN) it POSTs nothing and returns 'DRYRUN:note'."
+    )
+    args_schema: type[BaseModel] = GrampsCreateNoteInput
+
+    @api_tool(provider="GrampsWeb", endpoint="CreateNote")
+    def _run(self, text: str, note_type: str = "Research", dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        gen_handle = uuid.uuid4().hex
+        payload = {"_class": "Note", "handle": gen_handle, "type": note_type,
+                   "text": {"_class": "StyledText", "string": text, "tags": []}}
+        if dry_run:
+            return ok({"handle": "DRYRUN:note", "dry_run": True, "created": False})
+        resp = get_client().request("POST", "/notes/", json=payload)
+        data = resp.json() if resp.content else None
+        return ok({"handle": _created_handle(data) or gen_handle, "dry_run": False, "created": True})
+
+
+class GrampsEnsureTagInput(BaseModel):
+    name: str = Field(..., description="Tag name, e.g. 'ia-anomalie' or 'ia-a-verifier'.")
+    color: str = Field("#FF0000", description="Hex color used only when creating the tag.")
+    priority: int = Field(0, description="Priority used only when creating the tag.")
+    dry_run: bool = Field(False, description="If true, do not create; return 'DRYRUN:tag' if absent.")
+
+
+class GrampsEnsureTagTool(BaseTool):
+    """Ensure a tag exists by name (idempotent). Returns its handle (existing or created)."""
+
+    name: str = "gramps_ensure_tag"
+    description: str = (
+        "Returns the handle of the tag named `name`, creating it only if it does not already "
+        "exist (idempotent — never creates a duplicate). In dry-run, an absent tag yields "
+        "'DRYRUN:tag' instead of being created."
+    )
+    args_schema: type[BaseModel] = GrampsEnsureTagInput
+
+    @api_tool(provider="GrampsWeb", endpoint="EnsureTag")
+    def _run(self, name: str, color: str = "#FF0000", priority: int = 0,
+             dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        for tag in client.get_json("/tags/") or []:
+            if isinstance(tag, dict) and tag.get("name") == name:
+                return ok({"handle": tag.get("handle"), "created": False, "dry_run": dry_run})
+        if dry_run:
+            return ok({"handle": "DRYRUN:tag", "created": False, "dry_run": True})
+        gen_handle = uuid.uuid4().hex
+        payload = {"_class": "Tag", "handle": gen_handle, "name": name,
+                   "color": color, "priority": priority}
+        resp = client.request("POST", "/tags/", json=payload)
+        data = resp.json() if resp.content else None
+        return ok({"handle": _created_handle(data) or gen_handle, "created": True, "dry_run": False})
+
+
+class GrampsAttachInput(BaseModel):
+    handle: str = Field(..., description="Handle of the person to annotate.")
+    note_handle: str | None = Field(None, description="Note handle to append to note_list.")
+    tag_handle: str | None = Field(None, description="Tag handle to append to tag_list.")
+    dry_run: bool = Field(False, description="If true, compute the change but do not PUT.")
+
+
+class GrampsAttachTool(BaseTool):
+    """Append-only: attach a note and/or tag to a person. Touches ONLY note_list / tag_list."""
+
+    name: str = "gramps_attach"
+    description: str = (
+        "Attaches an existing note and/or tag to a person by appending their handles to the "
+        "person's note_list / tag_list (deduplicated). Append-only: it changes nothing else, and "
+        "skips a handle already present or synthetic ('DRYRUN:'). Writes unless dry_run or "
+        "GENECREW_DRY_RUN."
+    )
+    args_schema: type[BaseModel] = GrampsAttachInput
+
+    @api_tool(provider="GrampsWeb", endpoint="Attach")
+    def _run(self, handle: str, note_handle: str | None = None,
+             tag_handle: str | None = None, dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        person = client.get_object("people", handle)
+        note_list = list(person.get("note_list") or [])
+        tag_list = list(person.get("tag_list") or [])
+        added = {"note": None, "tag": None}
+        if (note_handle and not str(note_handle).startswith("DRYRUN:")
+                and note_handle not in note_list):
+            note_list.append(note_handle)
+            added["note"] = note_handle
+        if (tag_handle and not str(tag_handle).startswith("DRYRUN:")
+                and tag_handle not in tag_list):
+            tag_list.append(tag_handle)
+            added["tag"] = tag_handle
+        changed = added["note"] is not None or added["tag"] is not None
+        result = {"handle": handle, "gramps_id": person.get("gramps_id"),
+                  "added": added, "changed": changed, "dry_run": dry_run}
+        if changed and not dry_run:
+            # Append-only strict : on repart de l'objet complet et on ne réaffecte QUE les deux
+            # listes ; tout autre champ reste identique (aucune donnée cœur touchée).
+            updated = dict(person)
+            updated["note_list"] = note_list
+            updated["tag_list"] = tag_list
+            client.request("PUT", f"/people/{handle}", json=updated)
+        return ok(result)
