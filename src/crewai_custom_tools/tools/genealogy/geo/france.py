@@ -67,11 +67,14 @@ def _resolve_fr_by_name(parsed: ParsedPlace) -> ResolvedPlace | None:
         filtered = [c for c in exact
                     if ctx in (_norm((c.get("departement") or {}).get("nom", "")),
                                _norm((c.get("region") or {}).get("nom", "")))
-                    or (c.get("departement") or {}).get("code", "") == parsed.departement]
+                    or (bool(parsed.departement)
+                        and (c.get("departement") or {}).get("code", "") == parsed.departement)]
         if filtered:
             exact = filtered
     if not exact:
         return None                                  # abréviations/fautes -> bascule registre
+    if "centre" not in exact[0]:
+        return None                                  # payload malformé -> pas de coordonnées
     resolved = map_commune(exact[0], parsed)         # exact[0] = le plus peuplé (boost)
     if len(exact) > 1:
         resolved.ambiguous = True                    # vrais homonymes -> proposition

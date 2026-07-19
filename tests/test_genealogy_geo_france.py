@@ -25,6 +25,8 @@ def test_map_commune_wgs84_lonlat_and_hierarchy():
 
 
 def test_resolve_fr_returns_none_without_insee(monkeypatch):
+    from crewai_custom_tools.tools.genealogy.geo import france
+    monkeypatch.setattr(france, "_http_get", lambda path, params: [])
     parsed = ParsedPlace(raw="…", commune="X", insee=None, country="France", shifted=True)
     assert resolve_fr(parsed) is None                          # délègue au repli flou
 
@@ -44,12 +46,19 @@ def _sm(code, dept):
 def test_resolve_fr_by_name_unique_is_authoritative(monkeypatch):
     from crewai_custom_tools.tools.genealogy.geo import france
     from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
-    monkeypatch.setattr(france, "_http_get", lambda path, params: [_BOURGES])
+    seen = {}
+    def fake_get(path, params):
+        seen["path"] = path
+        seen["params"] = params
+        return [_BOURGES]
+    monkeypatch.setattr(france, "_http_get", fake_get)
     rp = france.resolve_fr(ParsedPlace(raw="", commune="Bourges", country="France"))
     assert rp is not None
     assert rp.code == "18033" and rp.score == 1.0 and rp.ambiguous is False
     assert rp.lat == "47.078" and rp.long == "2.3983"        # GeoJSON [lon,lat] -> lat/lon
     assert [lvl.name for lvl in rp.chains[0].levels] == ["France", "Centre-Val de Loire", "Cher"]
+    assert seen["path"] == "/communes"
+    assert seen["params"]["nom"] == "Bourges" and seen["params"]["boost"] == "population"
 
 def test_resolve_fr_by_name_fuzzy_nonexact_returns_none(monkeypatch):
     from crewai_custom_tools.tools.genealogy.geo import france
@@ -78,6 +87,20 @@ def test_resolve_fr_by_name_department_disambiguates(monkeypatch):
                         lambda path, params: [_sm("97418", "La Réunion"), _sm("25523", "Doubs")])
     rp = france.resolve_fr(ParsedPlace(raw="", commune="Sainte-Marie", departement="Doubs", country="France"))
     assert rp is not None and rp.ambiguous is False and rp.code == "25523"
+
+def test_resolve_fr_by_name_region_only_context_does_not_collapse_homonyms(monkeypatch):
+    from crewai_custom_tools.tools.genealogy.geo import france
+    from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
+    # Two exact homonyms; context is region-only (departement=""), region matches NEITHER.
+    # Candidate A has an empty dept code; the unguarded OR-clause would wrongly keep only A
+    # and emit an authoritative (ambiguous=False) write. With the guard, exact stays 2 -> ambiguous.
+    a = {"nom": "Sainte-Marie", "code": "97418", "centre": {"type": "Point", "coordinates": [0.0, 0.0]},
+         "departement": {"code": "", "nom": "La Réunion"}, "region": {"code": "", "nom": ""}}
+    b = {"nom": "Sainte-Marie", "code": "25523", "centre": {"type": "Point", "coordinates": [0.0, 0.0]},
+         "departement": {"code": "25", "nom": "Doubs"}, "region": {"code": "", "nom": ""}}
+    monkeypatch.setattr(france, "_http_get", lambda path, params: [a, b])
+    rp = france.resolve_fr(ParsedPlace(raw="", commune="Sainte-Marie", region="Bretagne", country="France"))
+    assert rp is not None and rp.ambiguous is True
 
 def test_resolve_fr_insee_path_still_used(monkeypatch):
     from crewai_custom_tools.tools.genealogy.geo import france
