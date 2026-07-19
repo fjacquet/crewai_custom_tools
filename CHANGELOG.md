@@ -4,6 +4,14 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.11.1] - 2026-07-19
+
+### Fixed
+
+- Dry-run gating is now **safe by default**. The genealogy write tools share a new `effective_dry_run(dry_run)` helper: when `GENECREW_DRY_RUN` is **absent**, the default is now to **simulate** (never silently write — previously an absent variable meant *write*). The env switch still only ever *forces* simulation, and an explicit `dry_run=True` always wins; set `GENECREW_DRY_RUN=false` to write for real. The genecrew orchestration passes this effective value into its reports, so a run can no longer print `écritures appliquées` while writing nothing.
+
+---
+
 ## [0.11.0] - 2026-07-18
 
 ### Added
