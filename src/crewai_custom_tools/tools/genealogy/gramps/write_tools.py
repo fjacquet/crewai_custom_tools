@@ -136,3 +136,108 @@ class GrampsUpdateGenderTool(BaseTool):
         if not dry_run:
             client.request("PUT", f"/people/{handle}", json=person)
         return ok(change)
+
+
+class GrampsCreatePlaceInput(BaseModel):
+    name: str = Field(..., description="Place name value.")
+    place_type: str = Field(..., description="Gramps place type (Country, Region, Department…).")
+    parent_handle: str | None = Field(None, description="Handle of the parent place, if any.")
+    date_qualifier: str | None = Field(None, description="Optional placeref date qualifier.")
+    lat: str | None = Field(None, description="WGS84 latitude decimal string.")
+    long: str | None = Field(None, description="WGS84 longitude decimal string.")
+    code: str | None = Field(None, description="Place code (INSEE/OFS/postal).")
+    dry_run: bool = Field(False, description="If true, simulate and return a synthetic handle.")
+
+
+class GrampsCreatePlaceTool(BaseTool):
+    """Create a parent/leaf place. Returns its handle (synthetic 'DRYRUN:<name>' in dry-run)."""
+
+    name: str = "gramps_create_place"
+    description: str = (
+        "Creates a Gramps place with an optional parent (placeref). Returns the new handle. "
+        "In dry-run (flag or GENECREW_DRY_RUN) it POSTs nothing and returns 'DRYRUN:<name>'."
+    )
+    args_schema: type[BaseModel] = GrampsCreatePlaceInput
+
+    @api_tool(provider="GrampsWeb", endpoint="CreatePlace")
+    def _run(self, name, place_type, parent_handle=None, date_qualifier=None,
+             lat=None, long=None, code=None, dry_run=False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        placeref_list = []
+        if parent_handle:
+            ref = {"ref": parent_handle}
+            if date_qualifier:
+                ref["_date_qualifier"] = date_qualifier      # P5 turns this into a Gramps Date
+            placeref_list.append(ref)
+        payload = {"_class": "Place", "name": {"value": name}, "place_type": place_type,
+                   "placeref_list": placeref_list}
+        if lat:
+            payload["lat"] = lat
+        if long:
+            payload["long"] = long
+        if code:
+            payload["code"] = code
+        if dry_run:
+            return ok({"handle": f"DRYRUN:{name}", "dry_run": True, "created": False})
+        resp = get_client().request("POST", "/places/", json=payload)
+        handle = resp.json().get("handle") if resp.content else None
+        return ok({"handle": handle, "dry_run": False, "created": True})
+
+
+class GrampsUpdatePlaceInput(BaseModel):
+    handle: str = Field(..., description="Handle of the existing place to enrich.")
+    name: str = Field(..., description="Canonical modern name value.")
+    place_type: str = Field(..., description="Gramps place type.")
+    lat: str | None = Field(None, description="WGS84 latitude.")
+    long: str | None = Field(None, description="WGS84 longitude.")
+    code: str | None = Field(None, description="Place code.")
+    placeref_list: list | None = Field(None, description="Parent placerefs [{ref, ...}].")
+    alt_names: list | None = Field(None, description="Alt names [{value, ...}] to add if absent.")
+    provenance: str | None = Field(None, description="Provenance string for a note (informational).")
+    dry_run: bool = Field(False, description="If true, compute changes but do not write.")
+
+
+class GrampsUpdatePlaceTool(BaseTool):
+    """Enrich an existing place in place (name/type/GPS/placerefs/alt_names). No-op when conforming."""
+
+    name: str = "gramps_update_place"
+    description: str = (
+        "Enriches one existing Gramps place: canonical name, type, WGS84 lat/long, parent "
+        "placerefs, and adds alt_names if absent. No-op when already conforming. Writes "
+        "directly unless dry_run is set or GENECREW_DRY_RUN is enabled."
+    )
+    args_schema: type[BaseModel] = GrampsUpdatePlaceInput
+
+    @api_tool(provider="GrampsWeb", endpoint="UpdatePlace")
+    def _run(self, handle, name, place_type, lat=None, long=None, code=None,
+             placeref_list=None, alt_names=None, provenance=None, dry_run=False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        place = get_client().get_object("places", handle)
+        before = {"name": (place.get("name") or {}).get("value"),
+                  "place_type": place.get("place_type"), "lat": place.get("lat"),
+                  "long": place.get("long"), "placeref_list": place.get("placeref_list") or []}
+        place["name"] = {**(place.get("name") or {}), "value": name}
+        place["place_type"] = place_type
+        if lat is not None:
+            place["lat"] = lat
+        if long is not None:
+            place["long"] = long
+        if code is not None:
+            place["code"] = code
+        if placeref_list is not None:
+            place["placeref_list"] = placeref_list
+        existing_alt = place.get("alt_names") or []
+        existing_values = {a.get("value") for a in existing_alt}
+        for a in (alt_names or []):
+            if a.get("value") not in existing_values:
+                existing_alt.append(a)
+        place["alt_names"] = existing_alt
+        after = {"name": name, "place_type": place_type, "lat": lat if lat is not None else place.get("lat"),
+                 "long": long if long is not None else place.get("long"),
+                 "placeref_list": placeref_list if placeref_list is not None else before["placeref_list"]}
+        noop = before == after and set(existing_values) >= {a.get("value") for a in (alt_names or [])}
+        change = {"handle": handle, "gramps_id": place.get("gramps_id"),
+                  "dry_run": dry_run, "noop": noop}
+        if not noop and not dry_run:
+            get_client().request("PUT", f"/places/{handle}", json=place)
+        return ok(change)
