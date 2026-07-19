@@ -271,3 +271,28 @@ class GrampsUpdatePlaceTool(BaseTool):
         if not noop and not dry_run:
             get_client().request("PUT", f"/places/{handle}", json=place)
         return ok(change)
+
+
+class GrampsMergePlacesInput(BaseModel):
+    keep_handle: str = Field(..., description="Handle of the surviving place (phoenix).")
+    merge_handle: str = Field(..., description="Handle of the place absorbed then deleted (titanic).")
+    dry_run: bool = Field(False, description="If true, simulate without merging.")
+
+
+class GrampsMergePlacesTool(BaseTool):
+    """Merge two places (moves backlinks). Human-triggered only; never called automatically."""
+
+    name: str = "gramps_merge_places"
+    description: str = (
+        "Merges the 'merge' place into the 'keep' place in Gramps (migrates event backlinks, "
+        "then removes the duplicate). Writes unless dry_run is set or GENECREW_DRY_RUN is enabled."
+    )
+    args_schema: type[BaseModel] = GrampsMergePlacesInput
+
+    @api_tool(provider="GrampsWeb", endpoint="MergePlaces")
+    def _run(self, keep_handle: str, merge_handle: str, dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        change = {"keep": keep_handle, "merge": merge_handle, "dry_run": dry_run}
+        if not dry_run:
+            get_client().request("POST", f"/places/{keep_handle}/merge/{merge_handle}")
+        return ok(change)
