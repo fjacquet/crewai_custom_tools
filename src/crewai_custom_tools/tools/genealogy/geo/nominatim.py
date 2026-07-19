@@ -20,12 +20,14 @@ def _http_get(params: dict) -> list:
 
 
 def map_nominatim(results: list[dict], parsed: ParsedPlace) -> ResolvedPlace | None:
-    """Pure map of Nominatim results → ResolvedPlace (worldwide, fuzzy)."""
+    """Pure map of Nominatim results → ResolvedPlace (worldwide, fuzzy). Picks the
+    candidate with the best name-similarity score, not Nominatim's raw importance order."""
     if not results:
         return None
     scores = [fuzzy_score(float(r.get("importance", 0.0)), parsed.commune,
                           r.get("display_name", "").split(",")[0]) for r in results]
-    top = results[0]
+    best = max(range(len(results)), key=lambda i: scores[i])
+    top = results[best]
     levels = []
     if parsed.country:
         levels.append(PlaceLevel(name=parsed.country, place_type="Country"))
@@ -35,7 +37,7 @@ def map_nominatim(results: list[dict], parsed: ParsedPlace) -> ResolvedPlace | N
         lat=str(top["lat"]), long=str(top["lon"]),
         chains=[DatedChain(levels=levels)],
         alt_names=[DatedName(value=parsed.raw)],
-        score=scores[0], ambiguous=is_ambiguous(scores),
+        score=scores[best], ambiguous=is_ambiguous(scores),
         source="Nominatim/OSM", query=f"{parsed.commune}, {parsed.country}".strip(", "),
     )
 

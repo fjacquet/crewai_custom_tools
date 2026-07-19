@@ -20,3 +20,17 @@ def test_map_nominatim_score_and_gps():
 
 def test_map_nominatim_empty_returns_none():
     assert map_nominatim([], ParsedPlace(raw="x", commune="Nowhere")) is None
+
+
+def test_map_nominatim_picks_best_score_not_first():
+    # results[0] a une importance élevée mais un mauvais match de nom ;
+    # results[1] est le bon lieu -> l'argmax du fuzzy_score doit choisir results[1].
+    parsed = ParsedPlace(raw="…", commune="Roma", country="Italie")
+    results = [
+        {"display_name": "Grande Raccordo Anulare, Italia",
+         "lat": "41.9", "lon": "12.5", "importance": 0.9},
+        {"display_name": "Roma, Italia", "lat": "41.9028", "lon": "12.4964", "importance": 0.6},
+    ]
+    rp = map_nominatim(results, parsed)
+    assert rp.name == "Roma"          # results[1], choisi par score, pas results[0]
+    assert rp.lat == "41.9028" and rp.long == "12.4964"
