@@ -50,4 +50,7 @@ def resolve_world(parsed: ParsedPlace) -> ResolvedPlace | None:
     if not parsed.commune:
         return None
     q = f"{parsed.commune}, {parsed.country}".strip(", ")
-    return map_nominatim(_http_get({"q": q, "format": "jsonv2", "limit": 5}), parsed)
+    # accept-language=fr : sans lui, Nominatim renvoie les toponymes en écriture locale
+    # (ex. Souk Ahras -> "سوق أهراس"), que la similarité latine note ~0.1 -> indécidable.
+    return map_nominatim(_http_get({"q": q, "format": "jsonv2", "limit": 5,
+                                    "accept-language": "fr"}), parsed)
