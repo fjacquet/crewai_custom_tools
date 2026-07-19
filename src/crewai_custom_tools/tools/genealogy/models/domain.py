@@ -82,3 +82,78 @@ class Proposition(BaseModel):
     preuve: str
     confiance: str                  # "haute" | "moyenne"
     priorite: str                   # "haute" | "moyenne"
+
+
+class ParsedPlace(BaseModel):
+    """Result of parsing one flat GEDCOM-style place string (positional, country last)."""
+
+    raw: str
+    commune: str = ""
+    insee: str | None = None            # 5-char INSEE code if embedded
+    postal: str | None = None
+    departement: str = ""
+    region: str = ""
+    country: str = ""                   # normalized country label/ISO
+    shifted: bool = False               # positional shift detected (no reliable code)
+
+
+class PlaceLevel(BaseModel):
+    """One node in a place's parent chain (top→down)."""
+
+    name: str
+    place_type: str                     # "Country" | "Region" | "Department" | "Municipality"…
+    code: str | None = None
+
+
+class DatedName(BaseModel):
+    value: str
+    date_qualifier: str | None = None   # None | "avant AAAA-MM-JJ" | "après AAAA-MM-JJ"
+
+
+class DatedChain(BaseModel):
+    """A parent chain valid over a period (top→down)."""
+
+    levels: list[PlaceLevel]
+    date_qualifier: str | None = None
+
+
+class ResolvedPlace(BaseModel):
+    """Normalized output every country resolver returns (the resolver contract)."""
+
+    name: str
+    place_type: str
+    lat: str | None = None              # WGS84 decimal (never Swiss x/y grid)
+    long: str | None = None
+    code: str | None = None
+    chains: list[DatedChain] = Field(default_factory=list)
+    alt_names: list[DatedName] = Field(default_factory=list)
+    score: float                        # 1.0 authoritative ; <1.0 fuzzy
+    ambiguous: bool = False             # ambiguity guard (spec §5) → forces proposition
+    source: str
+    query: str
+
+
+class PlaceProposition(BaseModel):
+    """One place's standardization proposal (report + YAML)."""
+
+    type: str                           # "lieu_resolu" | "lieu_indecidable"
+    gramps_id: str
+    handle: str
+    original: str
+    country: str
+    resolution: ResolvedPlace | None = None
+    action: str                         # "ecrire" | "proposition" | "indecidable"
+    confiance: str                      # "haute" | "moyenne" | "basse"
+    priorite: str
+    preuve: str
+
+
+class PlaceMergeProposition(BaseModel):
+    """Two existing leaf places resolving to the same canonical place (dedup). Never auto."""
+
+    gramps_id_keep: str
+    handle_keep: str
+    gramps_id_merge: str
+    handle_merge: str
+    canonical: str
+    reason: str
