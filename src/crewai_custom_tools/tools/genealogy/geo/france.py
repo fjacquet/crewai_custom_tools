@@ -5,6 +5,7 @@ from __future__ import annotations
 import httpx
 
 from crewai_custom_tools.core.rate_limiter import get_rate_limiter
+from crewai_custom_tools.tools.genealogy.geo.score import _norm
 from crewai_custom_tools.tools.genealogy.models.domain import (
     DatedChain, DatedName, ParsedPlace, PlaceLevel, ResolvedPlace,
 )
@@ -37,15 +38,42 @@ def map_commune(payload: dict, parsed: ParsedPlace) -> ResolvedPlace:
         lat=str(lat), long=str(lon), code=payload.get("code"),
         chains=[DatedChain(levels=levels)],
         alt_names=[DatedName(value=parsed.raw)],
-        score=1.0, source="geo.api.gouv.fr", query=f"/communes/{parsed.insee}",
+        score=1.0, source="geo.api.gouv.fr", query=f"/communes/{payload.get('code')}",
     )
 
 
 def resolve_fr(parsed: ParsedPlace) -> ResolvedPlace | None:
-    """Resolve a French place by embedded INSEE code (authoritative). None if no usable code."""
-    if not parsed.insee:
+    """Résout une commune française. Code INSEE prioritaire (autoritaire) ; sinon par nom."""
+    if parsed.insee:
+        payload = _http_get(f"/communes/{parsed.insee}", {"fields": _FIELDS})
+        if isinstance(payload, dict) and "centre" in payload:
+            return map_commune(payload, parsed)
         return None
-    payload = _http_get(f"/communes/{parsed.insee}", {"fields": _FIELDS})
-    if not isinstance(payload, dict) or "centre" not in payload:
+    if not parsed.commune:
         return None
-    return map_commune(payload, parsed)
+    return _resolve_fr_by_name(parsed)
+
+
+def _resolve_fr_by_name(parsed: ParsedPlace) -> ResolvedPlace | None:
+    """Résolution par nom via geo.api.gouv.fr. La recherche `nom` est floue -> on ne garde que
+    les correspondances de nom EXACTES. 1 exact -> autoritaire ; >1 -> proposition ; 0 -> None."""
+    results = _http_get("/communes", {"nom": parsed.commune, "fields": _FIELDS,
+                                      "boost": "population", "limit": 10})
+    if not isinstance(results, list) or not results:
+        return None
+    exact = [c for c in results if _norm(c.get("nom", "")) == _norm(parsed.commune)]
+    ctx = _norm(parsed.departement) or _norm(parsed.region)
+    if ctx and len(exact) > 1:
+        filtered = [c for c in exact
+                    if ctx in (_norm((c.get("departement") or {}).get("nom", "")),
+                               _norm((c.get("region") or {}).get("nom", "")))
+                    or (c.get("departement") or {}).get("code", "") == parsed.departement]
+        if filtered:
+            exact = filtered
+    if not exact:
+        return None                                  # abréviations/fautes -> bascule registre
+    resolved = map_commune(exact[0], parsed)         # exact[0] = le plus peuplé (boost)
+    if len(exact) > 1:
+        resolved.ambiguous = True                    # vrais homonymes -> proposition
+        resolved.source = f"geo.api.gouv.fr ({len(exact)} homonymes)"
+    return resolved
