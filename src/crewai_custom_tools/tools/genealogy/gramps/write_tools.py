@@ -37,6 +37,24 @@ def effective_dry_run(dry_run: bool) -> bool:
     return dry_run or os.environ.get("GENECREW_DRY_RUN", "true").strip().lower() in _DRY_RUN_TRUE
 
 
+_DATE_MODIFIER = {"avant": 1, "après": 2, "apres": 2}
+
+
+def date_qualifier_to_gramps_date(qualifier: str | None) -> dict | None:
+    """Convert 'avant/après YYYY-MM-DD' into a Gramps Date object (None if unrecognized)."""
+    if not qualifier:
+        return None
+    word, _, iso = qualifier.partition(" ")
+    modifier = _DATE_MODIFIER.get(word.strip().lower())
+    if modifier is None:
+        return None
+    try:
+        year, month, day = (int(x) for x in iso.strip().split("-"))
+    except ValueError:
+        return None
+    return {"_class": "Date", "modifier": modifier, "dateval": [day, month, year, False]}
+
+
 class GrampsUpdateNameInput(BaseModel):
     """Input schema for GrampsUpdateNameTool."""
 
@@ -166,8 +184,9 @@ class GrampsCreatePlaceTool(BaseTool):
         placeref_list = []
         if parent_handle:
             ref = {"ref": parent_handle}
-            if date_qualifier:
-                ref["_date_qualifier"] = date_qualifier      # P5 turns this into a Gramps Date
+            gdate = date_qualifier_to_gramps_date(date_qualifier)
+            if gdate is not None:
+                ref["date"] = gdate
             placeref_list.append(ref)
         payload = {"_class": "Place", "name": {"value": name}, "place_type": place_type,
                    "placeref_list": placeref_list}
@@ -225,7 +244,14 @@ class GrampsUpdatePlaceTool(BaseTool):
         if code is not None:
             place["code"] = code
         if placeref_list is not None:
-            place["placeref_list"] = placeref_list
+            normalized = []
+            for ref in placeref_list:
+                ref = dict(ref)
+                gdate = date_qualifier_to_gramps_date(ref.pop("_date_qualifier", None))
+                if gdate is not None:
+                    ref["date"] = gdate
+                normalized.append(ref)
+            place["placeref_list"] = normalized
         existing_alt = place.get("alt_names") or []
         existing_values = {a.get("value") for a in existing_alt}
         for a in (alt_names or []):
