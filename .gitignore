@@ -19,3 +19,8 @@ cache/
 
 # Documentation builds
 site/
+
+# Artefacts locaux (jamais suivis)
+.cache/
+.playwright-mcp/
+cassini.html
