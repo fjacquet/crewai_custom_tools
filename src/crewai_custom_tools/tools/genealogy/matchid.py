@@ -19,6 +19,71 @@ MATCHID_ENDPOINT = "https://deces.matchid.io/deces/api/v1/search"
 USER_AGENT = "crewai-custom-tools/genealogy (research tool)"
 
 
+def search_deces(last_name: str, first_name: str = "", birth_date: str = "",
+                 birth_city: str = "", limit: int = 10) -> list[dict]:
+    """Query the MatchID death-records API; return the raw person matches.
+
+    Single HTTP path shared by the CrewAI tool and the deterministic enrichers.
+    """
+    params: dict = {"lastName": last_name}
+    if first_name:
+        params["firstName"] = first_name
+    if birth_date:
+        params["birthDate"] = birth_date
+    if birth_city:
+        params["birthCity"] = birth_city
+    response = requests.get(
+        MATCHID_ENDPOINT, params=params,
+        headers={"User-Agent": USER_AGENT}, timeout=30,
+    )
+    response.raise_for_status()
+    body = (response.json() or {}).get("response") or {}
+    return list(body.get("persons") or [])[:limit]
+
+
+def _birth_concordance(birth_iso: str, match_birth: str) -> float:
+    """Concordance of tree birth ('1922-09-29' or '1922') vs INSEE 'YYYYMMDD'. Pure.
+
+    1.0 exact full date, 0.7 same year (either side year-only), 0.0 mismatch.
+    """
+    tree = birth_iso.replace("-", "").strip()
+    insee = (match_birth or "").strip()
+    if not tree or not insee:
+        return 0.0
+    if len(tree) == 8 and len(insee) == 8:
+        return 1.0 if tree == insee else (0.7 if tree[:4] == insee[:4] else 0.0)
+    return 0.7 if tree[:4] == insee[:4] else 0.0
+
+
+def score_deces_match(surname: str, given: str, birth_iso: str, match: dict) -> float:
+    """Deterministic match score in [0,1] — the score decides, never the LLM. Pure.
+
+    0.5·sim(surname) + 0.2·sim(given vs best first name) + 0.3·birth concordance;
+    a divergent birth eliminates (0.0).
+    """
+    from crewai_custom_tools.tools.genealogy.geo.score import similarity
+
+    name = match.get("name") or {}
+    conc = _birth_concordance(birth_iso, ((match.get("birth") or {}).get("date") or ""))
+    if conc == 0.0:
+        return 0.0
+    sim_nom = similarity(surname, name.get("last") or "")
+    firsts = name.get("first") or []
+    given_head = (given.split() or [""])[0]
+    sim_prenom = max((similarity(given_head, f) for f in firsts), default=0.0)
+    return round(0.5 * sim_nom + 0.2 * sim_prenom + 0.3 * conc, 3)
+
+
+def best_deces_match(surname: str, given: str, birth_iso: str,
+                     matches: list[dict]) -> tuple[dict, float] | None:
+    """Best-scoring raw match with its score; None when no candidate scores > 0. Pure."""
+    scored = [(m, score_deces_match(surname, given, birth_iso, m)) for m in matches]
+    scored = [(m, s) for m, s in scored if s > 0.0]
+    if not scored:
+        return None
+    return max(scored, key=lambda pair: pair[1])
+
+
 def _flatten_person(p: dict) -> dict:
     """Flatten one MatchID person record for agent consumption. Pure."""
     name = p.get("name") or {}
@@ -66,21 +131,9 @@ class InseeDecesSearchTool(BaseTool):
     def _run(self, last_name: str, first_name: str = "",
              birth_date: str = "", birth_city: str = "",
              limit: int = 10) -> str:
-        params = {"lastName": last_name}
-        if first_name:
-            params["firstName"] = first_name
-        if birth_date:
-            params["birthDate"] = birth_date
-        if birth_city:
-            params["birthCity"] = birth_city
-        response = requests.get(
-            MATCHID_ENDPOINT, params=params,
-            headers={"User-Agent": USER_AGENT}, timeout=30,
-        )
-        response.raise_for_status()
-        body = (response.json() or {}).get("response") or {}
-        persons = body.get("persons") or []
+        persons = search_deces(last_name, first_name=first_name,
+                               birth_date=birth_date, birth_city=birth_city, limit=limit)
         return ok({
-            "total": body.get("total", 0),
-            "matches": [_flatten_person(p) for p in persons[:limit]],
+            "total": len(persons),
+            "matches": [_flatten_person(p) for p in persons],
         })
