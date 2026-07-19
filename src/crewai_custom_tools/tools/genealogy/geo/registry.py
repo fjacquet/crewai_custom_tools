@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from crewai_custom_tools.tools.genealogy.geo.allemagne import resolve_de
 from crewai_custom_tools.tools.genealogy.geo.france import resolve_fr
 from crewai_custom_tools.tools.genealogy.geo.nominatim import resolve_world
 from crewai_custom_tools.tools.genealogy.geo.suisse import resolve_ch
@@ -13,6 +14,7 @@ from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace, Resol
 _BY_COUNTRY = {
     "France": lambda p: resolve_fr(p),
     "Suisse": lambda p: resolve_ch(p),
+    "Allemagne": lambda p: resolve_de(p),
     "États-Unis": lambda p: resolve_us(p),
 }
 
