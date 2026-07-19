@@ -23,6 +23,19 @@ from crewai_custom_tools.tools.genealogy.standardize.names import (
 
 logger = logging.getLogger(__name__)
 
+_DRY_RUN_TRUE = ("1", "true", "yes")
+
+
+def effective_dry_run(dry_run: bool) -> bool:
+    """True when writes must be simulated: the explicit param OR the global switch.
+
+    `GENECREW_DRY_RUN` is a safety switch that can only *force* simulation (an explicit
+    `dry_run=True` always wins toward safety). When the variable is **absent**, the safe
+    default is to SIMULATE — never silently write. Set `GENECREW_DRY_RUN=false` to write
+    for real.
+    """
+    return dry_run or os.environ.get("GENECREW_DRY_RUN", "true").strip().lower() in _DRY_RUN_TRUE
+
 
 class GrampsUpdateNameInput(BaseModel):
     """Input schema for GrampsUpdateNameTool."""
@@ -48,7 +61,7 @@ class GrampsUpdateNameTool(BaseTool):
         # Interrupteur de sécurité GLOBAL : GENECREW_DRY_RUN=true force la simulation,
         # quel que soit le paramètre. Il ne peut que rendre l'appel PLUS sûr, jamais forcer
         # une écriture réelle (un --dry-run explicite gagne toujours vers la sécurité).
-        dry_run = dry_run or os.environ.get("GENECREW_DRY_RUN", "").strip().lower() in ("1", "true", "yes")
+        dry_run = effective_dry_run(dry_run)
         client = get_client()
         person = client.get_object("people", handle)
         name = person.get("primary_name") or {}
@@ -110,7 +123,7 @@ class GrampsUpdateGenderTool(BaseTool):
     def _run(self, handle: str, gender: int, dry_run: bool = False) -> str:
         # Interrupteur GLOBAL : GENECREW_DRY_RUN=true force la simulation (ne peut que rendre
         # l'appel PLUS sûr ; un dry_run explicite gagne toujours vers la sécurité).
-        dry_run = dry_run or os.environ.get("GENECREW_DRY_RUN", "").strip().lower() in ("1", "true", "yes")
+        dry_run = effective_dry_run(dry_run)
         client = get_client()
         person = client.get_object("people", handle)
         old = person.get("gender", 2)
