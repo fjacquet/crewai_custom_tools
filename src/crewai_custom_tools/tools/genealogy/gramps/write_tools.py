@@ -437,3 +437,122 @@ class GrampsAttachTool(BaseTool):
             updated["tag_list"] = tag_list
             client.request("PUT", f"/people/{handle}", json=updated)
         return ok(result)
+
+
+class GrampsEnsureSourceInput(BaseModel):
+    """Input schema for GrampsEnsureSourceTool."""
+
+    title: str = Field(..., description="Source title, e.g. 'INSEE — Fichier des personnes décédées'.")
+    author: str = Field("", description="Source author/publisher (optional).")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsEnsureSourceTool(BaseTool):
+    """Idempotent: find a source by exact title, create it when absent."""
+
+    name: str = "gramps_ensure_source"
+    description: str = (
+        "Finds a Gramps source by exact title or creates it (title/author). "
+        "Idempotent — returns the handle either way."
+    )
+    args_schema: type[BaseModel] = GrampsEnsureSourceInput
+
+    @api_tool(provider="GrampsWeb", endpoint="EnsureSource", timeout=60.0)
+    def _run(self, title: str, author: str = "", dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        page = 1
+        while True:
+            batch = client.get_json("/sources/", params={"page": page, "pagesize": 200})
+            if not batch:
+                break
+            for source in batch:
+                if isinstance(source, dict) and source.get("title") == title:
+                    return ok({"handle": source.get("handle"), "created": False,
+                               "dry_run": dry_run})
+            page += 1
+        if dry_run:
+            return ok({"handle": "DRYRUN:source", "created": False, "dry_run": True})
+        gen_handle = uuid.uuid4().hex
+        payload = {"_class": "Source", "handle": gen_handle, "title": title}
+        if author:
+            payload["author"] = author
+        resp = client.request("POST", "/sources/", json=payload)
+        data = resp.json() if resp.content else None
+        return ok({"handle": _created_handle(data) or gen_handle, "created": True,
+                   "dry_run": False})
+
+
+class GrampsCreateCitationInput(BaseModel):
+    """Input schema for GrampsCreateCitationTool."""
+
+    source_handle: str = Field(..., description="Handle of the source being cited.")
+    page: str = Field(..., description="Citation locator (page/volume/record reference).")
+    confidence: int = Field(2, description="Gramps confidence 0-4; AI writes cap at 2.")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsCreateCitationTool(BaseTool):
+    """Create one citation pointing at a source (confidence capped at 2 for AI writes)."""
+
+    name: str = "gramps_create_citation"
+    description: str = (
+        "Creates a Gramps citation (source_handle + page reference). Confidence is "
+        "capped at 2 — only a human raises it higher."
+    )
+    args_schema: type[BaseModel] = GrampsCreateCitationInput
+
+    @api_tool(provider="GrampsWeb", endpoint="CreateCitation")
+    def _run(self, source_handle: str, page: str, confidence: int = 2,
+             dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        confidence = min(confidence, 2)             # plafond IA, garanti par le code
+        if dry_run or str(source_handle).startswith("DRYRUN:"):
+            return ok({"handle": "DRYRUN:citation", "created": False, "dry_run": True})
+        gen_handle = uuid.uuid4().hex
+        payload = {"_class": "Citation", "handle": gen_handle,
+                   "source_handle": source_handle, "page": page,
+                   "confidence": confidence}
+        client = get_client()
+        resp = client.request("POST", "/citations/", json=payload)
+        data = resp.json() if resp.content else None
+        return ok({"handle": _created_handle(data) or gen_handle, "created": True,
+                   "dry_run": False})
+
+
+class GrampsAttachCitationInput(BaseModel):
+    """Input schema for GrampsAttachCitationTool."""
+
+    object_type: str = Field(..., description="Gramps type owning the citation_list: "
+                                              "events, people, families or media.")
+    handle: str = Field(..., description="Handle of the object.")
+    citation_handle: str = Field(..., description="Citation handle to append.")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsAttachCitationTool(BaseTool):
+    """Append-only: add a citation handle to an object's citation_list."""
+
+    name: str = "gramps_attach_citation"
+    description: str = (
+        "Appends a citation to an object's citation_list (event, person, family...). "
+        "Strictly append-only: no other field is touched, duplicates are skipped."
+    )
+    args_schema: type[BaseModel] = GrampsAttachCitationInput
+
+    @api_tool(provider="GrampsWeb", endpoint="AttachCitation")
+    def _run(self, object_type: str, handle: str, citation_handle: str,
+             dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        obj = client.get_object(object_type, handle)
+        citations = list(obj.get("citation_list") or [])
+        changed = (not str(citation_handle).startswith("DRYRUN:")
+                   and citation_handle not in citations)
+        result = {"handle": handle, "gramps_id": obj.get("gramps_id"),
+                  "changed": changed, "dry_run": dry_run}
+        if changed and not dry_run:
+            updated = dict(obj)
+            updated["citation_list"] = [*citations, citation_handle]
+            client.request("PUT", f"/{object_type}/{handle}", json=updated)
+        return ok(result)
