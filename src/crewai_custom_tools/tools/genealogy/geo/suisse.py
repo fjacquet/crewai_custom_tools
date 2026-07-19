@@ -16,6 +16,28 @@ _URL = "https://api3.geo.admin.ch/rest/services/api/SearchServer"
 _TAG = re.compile(r"<[^>]+>")
 _PROVIDER = "Swisstopo"
 
+# swisstopo étiquette chaque commune "Nom (XX)" où XX = code du canton. On récupère le canton
+# comme niveau parent (Suisse › Canton › Commune), analogue au département FR / Land DE.
+_CANTON_RE = re.compile(r"\s*\(([A-Z]{2})\)\s*$")
+_CANTONS = {
+    "AG": "Argovie", "AI": "Appenzell Rhodes-Intérieures", "AR": "Appenzell Rhodes-Extérieures",
+    "BE": "Berne", "BL": "Bâle-Campagne", "BS": "Bâle-Ville", "FR": "Fribourg", "GE": "Genève",
+    "GL": "Glaris", "GR": "Grisons", "JU": "Jura", "LU": "Lucerne", "NE": "Neuchâtel",
+    "NW": "Nidwald", "OW": "Obwald", "SG": "Saint-Gall", "SH": "Schaffhouse", "SO": "Soleure",
+    "SZ": "Schwytz", "TG": "Thurgovie", "TI": "Tessin", "UR": "Uri", "VD": "Vaud",
+    "VS": "Valais", "ZG": "Zoug", "ZH": "Zurich",
+}
+
+
+def _split_label(label: str) -> tuple[str, str | None]:
+    """'Lausanne (VD)' -> ('Lausanne', 'Vaud'). Sans code canton valide -> (label, None)."""
+    m = _CANTON_RE.search(label)
+    if m:
+        canton = _CANTONS.get(m.group(1))
+        if canton:
+            return label[:m.start()].strip(), canton
+    return label.strip(), None
+
 
 def _http_get(url: str, params: dict) -> dict:
     get_rate_limiter().acquire(_PROVIDER)
@@ -33,11 +55,14 @@ def map_swiss(payload: dict, parsed: ParsedPlace) -> ResolvedPlace | None:
     scores = [best_similarity(parsed.commune, lbl) for lbl in labels]
     best = max(range(len(results)), key=lambda i: scores[i])
     attrs = results[best]["attrs"]
-    name = labels[best]
+    name, canton = _split_label(labels[best])
+    levels = [PlaceLevel(name="Suisse", place_type="Country")]
+    if canton:
+        levels.append(PlaceLevel(name=canton, place_type="Canton"))
     return ResolvedPlace(
         name=name or parsed.commune, place_type="Municipality",
         lat=str(attrs["lat"]), long=str(attrs["lon"]),     # WGS84 ; jamais x/y (LV95)
-        chains=[DatedChain(levels=[PlaceLevel(name="Suisse", place_type="Country")])],
+        chains=[DatedChain(levels=levels)],
         alt_names=[DatedName(value=parsed.raw)],
         score=scores[best], ambiguous=is_ambiguous(scores),
         source="swisstopo", query=parsed.commune,

@@ -33,7 +33,8 @@ def test_map_swiss_exact_match_scores_one_despite_canton_suffix():
                    ParsedPlace(raw="Lausanne, Vaud, Suisse", commune="Lausanne", country="Suisse"))
     assert rp is not None
     assert rp.score == 1.0
-    assert rp.name == "Lausanne (VD)"
+    assert rp.name == "Lausanne"                          # suffixe canton retiré du nom
+    assert [lvl.name for lvl in rp.chains[0].levels] == ["Suisse", "Vaud"]   # canton en parent
     assert rp.lat == "46.5" and rp.long == "6.6"          # WGS84 lat/lon, jamais x/y
 
 
@@ -43,8 +44,28 @@ def test_map_swiss_picks_best_not_first():
     # exact match is second in the list -> argmax must pick it
     rp = map_swiss(_swiss_payload("Belmont-sur-Lausanne (VD)", "Lausanne (VD)"),
                    ParsedPlace(raw="", commune="Lausanne", country="Suisse"))
-    assert rp.name == "Lausanne (VD)"
+    assert rp.name == "Lausanne"
     assert rp.score == 1.0
+
+
+def test_map_swiss_canton_in_chain_various():
+    from crewai_custom_tools.tools.genealogy.geo.suisse import map_swiss
+    from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
+    for label, commune, canton in [("Genève (GE)", "Genève", "Genève"),
+                                    ("Bern (BE)", "Bern", "Berne"),
+                                    ("Sion (VS)", "Sion", "Valais")]:
+        rp = map_swiss(_swiss_payload(label), ParsedPlace(raw="", commune=commune, country="Suisse"))
+        assert rp.name == commune
+        assert [lvl.name for lvl in rp.chains[0].levels] == ["Suisse", canton]
+        assert rp.chains[0].levels[1].place_type == "Canton"
+
+
+def test_map_swiss_no_canton_when_label_bare():
+    from crewai_custom_tools.tools.genealogy.geo.suisse import map_swiss
+    from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
+    rp = map_swiss(_swiss_payload("Davos"), ParsedPlace(raw="", commune="Davos", country="Suisse"))
+    assert rp.name == "Davos"
+    assert [lvl.name for lvl in rp.chains[0].levels] == ["Suisse"]   # pas de canton -> juste Suisse
 
 
 def test_resolve_ch_requests_municipalities_only(monkeypatch):
