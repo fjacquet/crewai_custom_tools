@@ -65,3 +65,18 @@ def test_parse_corsica_lone_insee_still_detected():
 def test_parse_two_codes_first_is_insee():
     p = parse_pname(", , Bourges, 18033, 18000, Cher, Centre-Val de Loire, France")
     assert p.insee == "18033" and p.postal == "18000"   # unchanged behavior
+
+
+def test_parse_recognizes_ags_8_digit_and_keeps_land():
+    p = parse_pname(", Waldeck, 06635021, 34513, Regierungsbezirk Kassel, Hesse, Germany")
+    assert p.ags == "06635021"
+    assert p.commune == "Waldeck"
+    assert p.country == "Allemagne"
+    assert p.region == "Hesse"           # Land récupéré (plus perdu par le tail)
+    assert p.postal == "34513"
+
+
+def test_parse_no_ags_when_no_8_digit_segment():
+    p = parse_pname(", , Bourges, 18033, 18000, Cher, Centre-Val de Loire, France")
+    assert p.ags is None                 # non-régression: 5 chiffres reste INSEE/postal
+    assert p.insee == "18033"

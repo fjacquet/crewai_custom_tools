@@ -90,6 +90,7 @@ class ParsedPlace(BaseModel):
     raw: str
     commune: str = ""
     insee: str | None = None            # 5-char INSEE code if embedded
+    ags: str | None = None              # 8-digit Amtlicher Gemeindeschlüssel (Germany)
     postal: str | None = None
     departement: str = ""
     region: str = ""
