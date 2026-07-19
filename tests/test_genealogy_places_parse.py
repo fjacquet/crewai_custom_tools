@@ -33,3 +33,16 @@ def test_normalize_country_variants():
     assert normalize_country("Germany>") == "Allemagne"
     assert normalize_country("Algerie") == "Algérie"
     assert normalize_country("") == ""
+
+
+def test_parse_repeated_value_not_deduped_by_value():
+    # commune/département homonyme (Marne) : l'exclusion doit être par INDEX, pas par valeur
+    p = parse_pname(", , Marne, , , Marne, Grand Est, France")
+    assert p.commune == "Marne"
+    assert p.departement == "Marne" and p.region == "Grand Est"
+
+
+def test_parse_country_only_string_has_empty_commune():
+    p = parse_pname(", , , , , , , France")
+    assert p.commune == ""            # le pays n'est jamais choisi comme commune
+    assert p.country == "France" and p.shifted is True
