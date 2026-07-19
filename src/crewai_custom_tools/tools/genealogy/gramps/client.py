@@ -153,13 +153,14 @@ class GrampsClient:
     def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         if self._token is None:
             self._token = self._fetch_token()
-        headers = {"Authorization": f"Bearer {self._token}"}
+        caller_headers = dict(kwargs.pop("headers", None) or {})  # ex. Content-Type upload
+        headers = {**caller_headers, "Authorization": f"Bearer {self._token}"}
         response = self._http.request(method, path, headers=headers, **kwargs)
         if response.status_code == 401:  # expired token: refresh once
             if self._token_cache is not None:
                 _invalidate_token_cache(self._token_cache)
             self._token = self._fetch_token()
-            headers = {"Authorization": f"Bearer {self._token}"}
+            headers = {**caller_headers, "Authorization": f"Bearer {self._token}"}
             response = self._http.request(method, path, headers=headers, **kwargs)
         response.raise_for_status()
         return response

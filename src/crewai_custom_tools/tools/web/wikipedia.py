@@ -117,3 +117,43 @@ class WikipediaArticleTool(BaseTool):
             return err(f"No Wikipedia page found for '{title}'")
         page_data = next(iter(pages.values()))
         return ok({"title": title, "content": page_data.get("extract", "")})
+
+
+# --- Place enrichment helpers (French Wikipedia) -----------------------------
+
+FRWIKI_API = "https://fr.wikipedia.org/w/api.php"
+_UA_PLACES = "crewai-custom-tools/genealogy (place enrichment)"
+
+
+def frwiki_geosearch(lat: str, lon: str, radius_m: int = 10000,
+                     limit: int = 10) -> list[dict]:
+    """Articles français géolocalisés autour d'un point (nom + distance en mètres).
+
+    Le couple nom+position est ce qui permet de VÉRIFIER un lien (jamais le nom seul).
+    """
+    response = requests.get(FRWIKI_API, params={
+        "action": "query", "list": "geosearch", "gscoord": f"{lat}|{lon}",
+        "gsradius": min(radius_m, 10000), "gslimit": limit, "format": "json"},
+        headers={"User-Agent": _UA_PLACES}, timeout=15)
+    response.raise_for_status()
+    return [{"title": g.get("title", ""), "dist": g.get("dist"),
+             "pageid": g.get("pageid")}
+            for g in response.json().get("query", {}).get("geosearch", [])]
+
+
+def frwiki_page_info(title: str, thumb_px: int = 1200) -> dict:
+    """URL canonique de l'article + miniature (largeur bornée) + extrait court."""
+    response = requests.get(FRWIKI_API, params={
+        "action": "query", "titles": title, "prop": "info|pageimages|extracts",
+        "inprop": "url", "piprop": "thumbnail|name", "pithumbsize": thumb_px,
+        "exintro": 1, "explaintext": 1, "exchars": 300, "format": "json"},
+        headers={"User-Agent": _UA_PLACES}, timeout=15)
+    response.raise_for_status()
+    pages = response.json().get("query", {}).get("pages", {})
+    page = next(iter(pages.values()), {})
+    thumb = page.get("thumbnail") or {}
+    return {"title": page.get("title", title),
+            "url": page.get("fullurl", ""),
+            "extract": page.get("extract", ""),
+            "image_url": thumb.get("source", ""),
+            "image_name": page.get("pageimage", "")}

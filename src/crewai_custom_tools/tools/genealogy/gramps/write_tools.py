@@ -556,3 +556,123 @@ class GrampsAttachCitationTool(BaseTool):
             updated["citation_list"] = [*citations, citation_handle]
             client.request("PUT", f"/{object_type}/{handle}", json=updated)
         return ok(result)
+
+
+class GrampsAddUrlInput(BaseModel):
+    """Input schema for GrampsAddUrlTool."""
+
+    object_type: str = Field(..., description="Gramps type owning a urls list: places, "
+                                              "people, repositories...")
+    handle: str = Field(..., description="Handle of the object.")
+    url: str = Field(..., description="The URL to append (deduplicated by path).")
+    description: str = Field("", description="Link label shown in Gramps (e.g. 'Wikipédia').")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsAddUrlTool(BaseTool):
+    """Append-only: add a URL to an object's urls list (dedup by path)."""
+
+    name: str = "gramps_add_url"
+    description: str = (
+        "Appends a Url to an object's urls list (place, person...). Strictly "
+        "append-only, duplicates by path are skipped."
+    )
+    args_schema: type[BaseModel] = GrampsAddUrlInput
+
+    @api_tool(provider="GrampsWeb", endpoint="AddUrl")
+    def _run(self, object_type: str, handle: str, url: str,
+             description: str = "", dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        obj = client.get_object(object_type, handle)
+        urls = list(obj.get("urls") or [])
+        changed = url not in {u.get("path") for u in urls}
+        result = {"handle": handle, "gramps_id": obj.get("gramps_id"),
+                  "changed": changed, "dry_run": dry_run}
+        if changed and not dry_run:
+            updated = dict(obj)
+            updated["urls"] = [*urls, {"_class": "Url", "path": url,
+                                       "desc": description, "type": "Web Home"}]
+            client.request("PUT", f"/{object_type}/{handle}", json=updated)
+        return ok(result)
+
+
+class GrampsUploadMediaInput(BaseModel):
+    """Input schema for GrampsUploadMediaTool."""
+
+    file_url: str = Field(..., description="HTTP(S) URL of the image to import.")
+    description: str = Field(..., description="Media description (title + attribution).")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsUploadMediaTool(BaseTool):
+    """Download an image and create a Gramps media object (binary POST + metadata)."""
+
+    name: str = "gramps_upload_media"
+    description: str = (
+        "Downloads an image from a URL and imports it as a Gramps media object with "
+        "the given description/attribution. Returns the media handle."
+    )
+    args_schema: type[BaseModel] = GrampsUploadMediaInput
+
+    @api_tool(provider="GrampsWeb", endpoint="UploadMedia", timeout=60.0)
+    def _run(self, file_url: str, description: str, dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        if dry_run:
+            return ok({"handle": "DRYRUN:media", "created": False, "dry_run": True})
+        import requests as _requests
+
+        resp = _requests.get(file_url, timeout=60, headers={
+            "User-Agent": "crewai-custom-tools/genealogy (media import)"})
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "application/octet-stream")
+        client = get_client()
+        created = client.request("POST", "/media/", content=resp.content,
+                                 headers={"Content-Type": content_type})
+        data = created.json() if created.content else None
+        handle = _created_handle(data)
+        if not handle:
+            return err("gramps_upload_media: no handle returned by the API")
+        media = client.get_object("media", handle)
+        media["desc"] = description
+        client.request("PUT", f"/media/{handle}", json=media)
+        return ok({"handle": handle, "created": True, "dry_run": False,
+                   "mime": media.get("mime")})
+
+
+class GrampsAttachMediaInput(BaseModel):
+    """Input schema for GrampsAttachMediaTool."""
+
+    object_type: str = Field(..., description="Gramps type owning media_list: places, "
+                                              "people, events, sources...")
+    handle: str = Field(..., description="Handle of the object.")
+    media_handle: str = Field(..., description="Media handle to reference.")
+    dry_run: bool = Field(False, description="Simulate without writing.")
+
+
+class GrampsAttachMediaTool(BaseTool):
+    """Append-only: reference a media object in an object's media_list."""
+
+    name: str = "gramps_attach_media"
+    description: str = (
+        "Appends a MediaRef to an object's media_list (place, person, event...). "
+        "Strictly append-only, duplicates are skipped."
+    )
+    args_schema: type[BaseModel] = GrampsAttachMediaInput
+
+    @api_tool(provider="GrampsWeb", endpoint="AttachMedia")
+    def _run(self, object_type: str, handle: str, media_handle: str,
+             dry_run: bool = False) -> str:
+        dry_run = effective_dry_run(dry_run)
+        client = get_client()
+        obj = client.get_object(object_type, handle)
+        refs = list(obj.get("media_list") or [])
+        changed = (not str(media_handle).startswith("DRYRUN:")
+                   and media_handle not in {r.get("ref") for r in refs})
+        result = {"handle": handle, "gramps_id": obj.get("gramps_id"),
+                  "changed": changed, "dry_run": dry_run}
+        if changed and not dry_run:
+            updated = dict(obj)
+            updated["media_list"] = [*refs, {"_class": "MediaRef", "ref": media_handle}]
+            client.request("PUT", f"/{object_type}/{handle}", json=updated)
+        return ok(result)
