@@ -37,20 +37,26 @@ def suggest_misattached_parent_event(
         for family in parent_families:
             if not is_valid(family.marriage):
                 continue
-            if event.sortval == family.marriage.sortval:
+            exact = event.sortval == family.marriage.sortval
+            # Les précisions divergent souvent (événement daté « 1701 » côté personne,
+            # « 31/01/1701 » côté famille) : la même année suffit, à confiance moindre.
+            same_year = (event.year is not None and event.year == family.marriage.year)
+            if exact or same_year:
+                precision = ("sa date coïncide exactement avec"
+                             if exact else "sa date tombe la même année que")
                 return PropositionAudit(
                     type="relation", gramps_id=person.gramps_id, handle=person.handle,
                     personne=person.name,
                     cible=f"événement {event.type} ({event.year}) de {person.gramps_id}",
                     action=f"Détacher l'événement {event.type} daté de {event.year} de "
                            f"{person.name} : il est antérieur à sa naissance "
-                           f"({person.birth.year}) et sa date coïncide exactement avec le "
+                           f"({person.birth.year}) et {precision} le "
                            f"mariage de la famille parentale {family.gramps_id} — le "
                            f"rattacher à cette famille.",
-                    preuve_detail=f"sortval identique à la journée près entre l'événement "
-                                  f"et le mariage de {family.gramps_id} ; événement "
-                                  f"antérieur à la naissance. Données internes Gramps.",
-                    priorite="moyenne", confiance=2)
+                    preuve_detail=f"Événement antérieur à la naissance ; concordance "
+                                  f"{'au jour près' if exact else 'à l’année'} avec le "
+                                  f"mariage de {family.gramps_id}. Données internes Gramps.",
+                    priorite="moyenne", confiance=2 if exact else 1)
     return None
 
 

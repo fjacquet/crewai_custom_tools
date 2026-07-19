@@ -35,13 +35,25 @@ def test_event_matching_parents_marriage_is_flagged():
     assert prop.gramps_id == "I0010"
 
 
-def test_pre_birth_event_with_different_date_is_not_flagged():
+def test_pre_birth_event_with_different_year_is_not_flagged():
     claude = _person("I0010", "Claude Villaudy",
                      birth=_event("Birth", 1703, 2342800),
-                     events=[_event("Marriage", 1700, 2341500)])   # sortval différent
+                     events=[_event("Marriage", 1700, 2341500)])   # autre ANNÉE
     fam = FamilyFacts(gramps_id="F0011", handle="hF",
                       marriage=_event("Marriage", 1701, 2342000))
     assert suggest_misattached_parent_event(claude, [fam]) is None
+
+
+def test_same_year_different_precision_is_flagged_confiance_1():
+    # cas réel I0010 : événement « 1701 » (année seule) vs mariage « 31/01/1701 »
+    claude = _person("I0010", "Claude Villaudy",
+                     birth=_event("Birth", 1703, 2343068),
+                     events=[_event("Marriage", 1701, 2342338)])
+    fam = FamilyFacts(gramps_id="F0011", handle="hF",
+                      marriage=_event("Marriage", 1701, 2342368))
+    prop = suggest_misattached_parent_event(claude, [fam])
+    assert prop is not None and prop.confiance == 1
+    assert "même année" in prop.action
 
 
 def test_post_birth_marriage_is_normal():
