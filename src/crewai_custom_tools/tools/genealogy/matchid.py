@@ -69,7 +69,8 @@ def score_deces_match(surname: str, given: str, birth_iso: str, match: dict) -> 
         return 0.0
     sim_nom = similarity(surname, name.get("last") or "")
     firsts = name.get("first") or []
-    given_head = (given.split() or [""])[0]
+    # Tree given names come comma-separated ("Paul, Marcel"); keep the first, clean.
+    given_head = (given.replace(",", " ").split() or [""])[0]
     sim_prenom = max((similarity(given_head, f) for f in firsts), default=0.0)
     return round(0.5 * sim_nom + 0.2 * sim_prenom + 0.3 * conc, 3)
 
