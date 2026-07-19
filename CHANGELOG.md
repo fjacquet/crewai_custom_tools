@@ -4,6 +4,59 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.11.0] - 2026-07-18
+
+### Added
+
+- `GrampsUpdateGenderTool` — the genealogy domain's first write of a *fact* (a person's `gender`, int `0=F/1=M/2=U`) to Gramps Web. Bounded, high-confidence use only (consumed by genecrew's `gender-apply` above a confidence threshold). Gated by the double dry-run switch (the `dry_run` param OR the global `GENECREW_DRY_RUN` env — the env can only force simulation, never force a write), no-ops when the requested gender already equals the current one, and returns the `ok()` envelope with `{old, new, dry_run, noop}`. Exported in `__all__` (reusable by a future writer agent). See ADR 0009 in the genecrew repo.
+
+---
+
+## [0.10.0] - 2026-07-18
+
+### Added
+
+- Gender-inference domain: the `Proposition` Pydantic model (the project's first proposition emitter — a proposal for human review of a *fact*, reused by future chantiers) and `analysis/gender.py` (`normkey`, `infer_sex`, `load_prenoms_table`, `GenderInference`). Conservative policy: infer a sex only when the dominant sex is ≥ 95 % over ≥ 50 births. `normkey` canonicalizes to uppercase, strips accents, and folds apostrophe/hyphen Unicode variants (incl. U+2019).
+- Sovereign, offline **prénom→sexe reference table** embedded in the wheel (`tools/genealogy/data/prenoms_sexe.csv`, ~85 500 names) plus `scripts/build_prenoms_sexe.py`, which provisions the table by **auto-downloading** its sources — INSEE (Fichier des prénoms, Licence Ouverte) + OFS/BFS (Swiss population first names by year of birth). The Swiss source fixes franco-Swiss false positives at the data level (e.g. "Ami", "Marie-Joseph" → abstention) and adds Swiss-German names (Beat/Ueli/Reto). `--no-ofs` builds from INSEE only.
+
+---
+
+## [0.9.0] - 2026-07-18
+
+### Added
+
+- Name-casing standardizer, the genealogy domain's **first writer** to Gramps: `GrampsUpdateNameTool` (`gramps/write_tools.py`) re-capitalizes a person's primary name (given + surnames, treated as separate fields) backed by `standardize/names.py` (French-aware pure helpers: particles, `de`/`d'`, hyphenated compounds, apostrophe/hyphen Unicode). Casing = *form*, so it writes directly — but is guarded by a **case-only invariant** (`is_case_only_change`) that refuses any change altering the letters (it can re-capitalize, never re-spell) and skips incomplete names (`?`/digits). Gated by the `dry_run` param and the global `GENECREW_DRY_RUN` env switch.
+
+### Fixed
+
+- Dropped a Mc/Mac capitalization heuristic that corrupted French names (`MACRON` → `MacRon`).
+
+---
+
+## [0.8.1] - 2026-07-17
+
+### Added
+
+- Completeness rules D1 (person with no date at all), D2 (free-text / unsortable date), D3 (unknown gender) in `analysis/rules.py`.
+
+---
+
+## [0.8.0] - 2026-07-17
+
+### Added
+
+- Deterministic genealogy audit (no LLM): hand-written domain models (`models/domain.py` — `PersonFacts`/`FamilyFacts`/`Anomaly`/`DuplicateCandidate`) and pure consistency rules in `analysis/`: person rules R1, R2, R6–R9 and family rules R3, R4, R5 (`rules.py`), plus the duplicate finder R10 (`duplicates.py`, difflib + birth-year window). Date comparisons use the Gramps Julian-day `sortval`, so unknown dates never produce a false positive.
+
+---
+
+## [0.7.0] - 2026-07-17
+
+### Added
+
+- Genealogy domain (Phase 0), consumed by the sibling `genecrew` project: `gramps/client.py` (pure httpx + JWT Gramps Web client with read helpers), `models/gramps_generated.py` (Pydantic models generated from the Gramps Web OpenAPI 3.17.0 spec), and 5 read-only Gramps `BaseTool`s (`gramps/read_tools.py`: search, get-object, list-people, tree-stats, timeline).
+
+---
+
 ## [0.6.2] - 2026-07-16
 
 ### Security
