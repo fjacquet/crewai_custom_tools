@@ -41,41 +41,19 @@ def search_deces(last_name: str, first_name: str = "", birth_date: str = "",
     return list(body.get("persons") or [])[:limit]
 
 
-def _birth_concordance(birth_iso: str, match_birth: str) -> float:
-    """Concordance of tree birth ('1922-09-29' or '1922') vs INSEE 'YYYYMMDD'. Pure.
-
-    1.0 exact full date, 0.5 same year only, 0.0 mismatch. Year-only concordance is
-    deliberately capped so it can NEVER cross the proposal threshold by itself: with a
-    27M-record national file, "same common name + same birth year" is a near-certain
-    homonym (real alive-person false positives were produced at 0.7).
-    """
-    tree = birth_iso.replace("-", "").strip()
-    insee = (match_birth or "").strip()
-    if not tree or not insee:
-        return 0.0
-    if len(tree) == 8 and len(insee) == 8:
-        return 1.0 if tree == insee else (0.5 if tree[:4] == insee[:4] else 0.0)
-    return 0.5 if tree[:4] == insee[:4] else 0.0
-
-
 def score_deces_match(surname: str, given: str, birth_iso: str, match: dict) -> float:
     """Deterministic match score in [0,1] — the score decides, never the LLM. Pure.
 
-    0.5·sim(surname) + 0.2·sim(given vs best first name) + 0.3·birth concordance;
-    a divergent birth eliminates (0.0).
+    Delegates to the shared identity scoring (analysis/identity.py): year-only birth
+    concordance is capped there so it can never cross the proposal threshold alone.
     """
-    from crewai_custom_tools.tools.genealogy.geo.score import similarity
+    from crewai_custom_tools.tools.genealogy.analysis.identity import score_identity
 
     name = match.get("name") or {}
-    conc = _birth_concordance(birth_iso, ((match.get("birth") or {}).get("date") or ""))
-    if conc == 0.0:
-        return 0.0
-    sim_nom = similarity(surname, name.get("last") or "")
-    firsts = name.get("first") or []
-    # Tree given names come comma-separated ("Paul, Marcel"); keep the first, clean.
-    given_head = (given.replace(",", " ").split() or [""])[0]
-    sim_prenom = max((similarity(given_head, f) for f in firsts), default=0.0)
-    return round(0.5 * sim_nom + 0.2 * sim_prenom + 0.3 * conc, 3)
+    insee_birth = ((match.get("birth") or {}).get("date") or "")
+    return score_identity(surname, given, birth_iso,
+                          name.get("last") or "", list(name.get("first") or []),
+                          insee_birth)
 
 
 def best_deces_match(surname: str, given: str, birth_iso: str,
