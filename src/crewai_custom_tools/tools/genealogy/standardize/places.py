@@ -16,6 +16,7 @@ from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
 CORSICA_RE = re.compile(r"^2[AB]\d{3}$")             # 2A004 : unambiguously INSEE
 FIVE_DIGIT_RE = re.compile(r"^\d{5}$")               # 18033 or 18000 : INSEE or postal, ambiguous alone
 POSTAL_RE = re.compile(r"^\d{4,5}$")
+AGS_RE = re.compile(r"^\d{8}$")             # Amtlicher Gemeindeschlüssel (Allemagne), 8 chiffres
 
 # Table de normalisation des pays : variantes (casse/langue/accent/parasite) → label FR.
 _COUNTRY = {
@@ -69,15 +70,19 @@ def parse_pname(raw: str) -> ParsedPlace:
                        if i != insee_idx and POSTAL_RE.match(s)), None)
     postal = segments[postal_idx] if postal_idx is not None else None
 
+    # AGS allemand : un segment de 8 chiffres exacts (distinct de l'INSEE/postal 5 chiffres).
+    ags_idx = next((i for i, s in enumerate(segments) if AGS_RE.match(s)), None)
+    ags = segments[ags_idx] if ags_idx is not None else None
+
     # Commune = segment before the INSEE code; else first non-empty segment that is
-    # neither the country position nor a bare code.
+    # neither the country position nor a bare code (postal or AGS).
     if insee_idx is not None and insee_idx > 0:
         commune = segments[insee_idx - 1]
         commune_idx = insee_idx - 1
     else:
         commune, commune_idx = "", None
         for i in nonempty_idx:
-            if i == country_idx or POSTAL_RE.match(segments[i]):
+            if i == country_idx or POSTAL_RE.match(segments[i]) or AGS_RE.match(segments[i]):
                 continue
             commune, commune_idx = segments[i], i
             break
@@ -92,11 +97,11 @@ def parse_pname(raw: str) -> ParsedPlace:
         country = ""
 
     # Département / région = remaining non-empty segments, excluded BY INDEX (not value).
-    used = {country_idx, insee_idx, postal_idx, commune_idx}
+    used = {country_idx, insee_idx, postal_idx, ags_idx, commune_idx}
     tail = [segments[i] for i in nonempty_idx if i not in used]
     departement = tail[0] if len(tail) >= 1 else ""
     region = tail[1] if len(tail) >= 2 else ""
 
     shifted = country == "France" and insee is None
-    return ParsedPlace(raw=raw, commune=commune, insee=insee, postal=postal,
+    return ParsedPlace(raw=raw, commune=commune, insee=insee, ags=ags, postal=postal,
                        departement=departement, region=region, country=country, shifted=shifted)

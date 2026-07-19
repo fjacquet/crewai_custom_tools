@@ -99,3 +99,18 @@ def test_parse_garbage_becomes_commune_not_country():
     p = parse_pname(", , 1790 ( avant), , , , ,")
     assert p.commune == "1790 ( avant)"
     assert p.country == ""
+
+
+def test_parse_recognizes_ags_8_digit_and_keeps_land():
+    p = parse_pname(", Waldeck, 06635021, 34513, Regierungsbezirk Kassel, Hesse, Germany")
+    assert p.ags == "06635021"
+    assert p.commune == "Waldeck"
+    assert p.country == "Allemagne"
+    assert p.region == "Hesse"           # Land récupéré (plus perdu par le tail)
+    assert p.postal == "34513"
+
+
+def test_parse_no_ags_when_no_8_digit_segment():
+    p = parse_pname(", , Bourges, 18033, 18000, Cher, Centre-Val de Loire, France")
+    assert p.ags is None                 # non-régression: 5 chiffres reste INSEE/postal
+    assert p.insee == "18033"
