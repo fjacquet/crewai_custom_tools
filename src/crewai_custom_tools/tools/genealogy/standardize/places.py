@@ -29,6 +29,8 @@ _COUNTRY = {
     "etats-unis": "États-Unis", "usa": "États-Unis", "united states": "États-Unis",
 }
 
+_KNOWN_COUNTRIES = frozenset(_COUNTRY.values())
+
 
 def _strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
@@ -79,6 +81,15 @@ def parse_pname(raw: str) -> ParsedPlace:
                 continue
             commune, commune_idx = segments[i], i
             break
+
+    # Nom nu tronqué à droite (", , BOURGES, , ,") : le seul segment rempli a été pris pour
+    # le pays et la commune est restée vide. Si ce "pays" n'est pas un pays connu, c'est en
+    # réalité le nom le plus spécifique -> commune, pas pays. Le garbage (date/URL) suit le
+    # même chemin et sera laissé indécidable par le résolveur.
+    if not commune and country and country not in _KNOWN_COUNTRIES:
+        commune = segments[country_idx]
+        commune_idx = country_idx
+        country = ""
 
     # Département / région = remaining non-empty segments, excluded BY INDEX (not value).
     used = {country_idx, insee_idx, postal_idx, commune_idx}

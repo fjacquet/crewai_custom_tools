@@ -65,3 +65,37 @@ def test_parse_corsica_lone_insee_still_detected():
 def test_parse_two_codes_first_is_insee():
     p = parse_pname(", , Bourges, 18033, 18000, Cher, Centre-Val de Loire, France")
     assert p.insee == "18033" and p.postal == "18000"   # unchanged behavior
+
+
+def test_parse_right_truncated_flat_name_is_commune():
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+    p = parse_pname(", , BOURGES, , , , ,")
+    assert p.commune == "BOURGES"
+    assert p.country == ""
+
+def test_parse_single_token_is_commune():
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+    p = parse_pname("Bourges")
+    assert p.commune == "Bourges"
+    assert p.country == ""
+
+def test_parse_known_country_last_segment_unchanged():
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+    p = parse_pname("Lausanne, Vaud, Suisse")
+    assert p.commune == "Lausanne"
+    assert p.country == "Suisse"
+
+def test_parse_full_french_chain_unchanged():
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+    p = parse_pname("Bourges, Cher, Centre-Val de Loire, France")
+    assert p.commune == "Bourges"
+    assert p.country == "France"
+    assert p.departement == "Cher"
+
+def test_parse_garbage_becomes_commune_not_country():
+    # A date/URL/description in the name field must NOT be invented as a country;
+    # it becomes the commune so the downstream resolver returns nothing -> indecidable.
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+    p = parse_pname(", , 1790 ( avant), , , , ,")
+    assert p.commune == "1790 ( avant)"
+    assert p.country == ""
