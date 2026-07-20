@@ -1,5 +1,6 @@
 """Traduction « résultat d'archive → Piste ». Une fonction pure par source."""
 
+from crewai_custom_tools.tools.genealogy.pistes.dhs import pistes_dhs
 from crewai_custom_tools.tools.genealogy.pistes.matchid import (
     event_iso,
     first_given,
@@ -18,6 +19,7 @@ __all__ = [
     "first_given",
     "mots",
     "norm_nom",
+    "pistes_dhs",
     "pistes_matchid",
     "pistes_wikidata",
     "q_item",
