@@ -1,5 +1,6 @@
 # tests/test_genealogy_geo_france_ex_communes.py
 from crewai_custom_tools.tools.genealogy.geo import france_ex_communes as fec
+from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
 
 # Ligne réellement rendue par query.wikidata.org pour ?item wdt:P374 "55451"
 _ROW_SAINT_AGNANT = {
@@ -123,8 +124,6 @@ def test_wikidata_ex_commune_programming_error_propagates(monkeypatch):
     with pytest.raises(KeyError):
         fec.wikidata_ex_commune("55451")
 
-
-from crewai_custom_tools.tools.genealogy.models.domain import ParsedPlace
 
 # Réponse réelle de /communes_associees_deleguees?nom=…
 _ASSOCIEE = {
