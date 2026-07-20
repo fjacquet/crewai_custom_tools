@@ -46,11 +46,35 @@ def test_wikidata_ex_commune_no_row_is_none(monkeypatch):
     assert fec.wikidata_ex_commune("55451") is None
 
 
-def test_wikidata_ex_commune_multiple_rows_is_none(monkeypatch):
-    # Deux entités partageant un P374 : ambiguïté, on ne date pas.
-    monkeypatch.setattr(fec, "sparql_rows",
-                        lambda query: [_ROW_SAINT_AGNANT, dict(_ROW_SAINT_AGNANT)])
-    assert fec.wikidata_ex_commune("55451") is None
+def test_wikidata_ex_commune_distinct_items_is_none(monkeypatch):
+    # Vraie ambiguïté : deux ?item DIFFÉRENTS pour le même code INSEE. Cas réel
+    # mesuré — l'INSEE 55093 est porté par Q1048039 et Q123186720.
+    row_a = {
+        "item": "http://www.wikidata.org/entity/Q1048039",
+        "dissolved": "1972-12-31T00:00:00Z",
+        "succInsee": "55012",
+        "coord": "Point(5.622588 48.842142)",
+    }
+    row_b = {
+        "item": "http://www.wikidata.org/entity/Q123186720",
+        "dissolved": "1973-01-01T00:00:00Z",
+        "succInsee": "55012",
+        "coord": "Point(5.6 48.8)",
+    }
+    monkeypatch.setattr(fec, "sparql_rows", lambda query: [row_a, row_b])
+    assert fec.wikidata_ex_commune("55093") is None
+
+
+def test_wikidata_ex_commune_multivalued_coord_is_not_ambiguous(monkeypatch):
+    # Fan-out SPARQL, pas ambiguïté : MÊME ?item, mais P625 multivaluée rend
+    # deux lignes (deux revendications de coordonnées). La datation doit passer.
+    row_a = dict(_ROW_SAINT_AGNANT)
+    row_b = dict(_ROW_SAINT_AGNANT, coord="Point(5.6 48.8)")
+    monkeypatch.setattr(fec, "sparql_rows", lambda query: [row_a, row_b])
+    facts = fec.wikidata_ex_commune("55451")
+    assert facts is not None
+    assert facts.dissolved == "1972-12-31"
+    assert facts.successor_insee == "55012"
 
 
 def test_wikidata_ex_commune_missing_optionals(monkeypatch):

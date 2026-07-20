@@ -52,7 +52,7 @@ def parse_wkt_point(wkt: str) -> tuple[str, str] | None:
 
 
 def wikidata_ex_commune(insee: str) -> ExCommuneFacts | None:
-    """Faits Wikidata pour une ex-commune. None si 0 ou >1 entité porte ce code INSEE.
+    """Faits Wikidata pour une ex-commune. None si 0, ou >1 entité *distincte*, porte ce code INSEE.
 
     Wikidata n'est qu'un enrichisseur : toute panne réseau rend None (pas de datation)
     plutôt que de faire échouer la résolution entière.
@@ -65,7 +65,16 @@ def wikidata_ex_commune(insee: str) -> ExCommuneFacts | None:
         # bugs de ce module, et doivent remonter plutôt que se déguiser en
         # « pas de datation » — même convention que places_apply.py.
         return None
-    if len(rows) != 1:                     # 0 = inconnu ; >1 = ambigu -> on ne date pas
+    if not rows:                           # 0 ligne : code INSEE inconnu de Wikidata
+        return None
+    items = {row.get("item") for row in rows}
+    if len(items) != 1:
+        # On compte les ?item DISTINCTS, pas les lignes : les trois OPTIONAL de la
+        # requête produisent un fan-out SPARQL dès qu'une propriété est multivaluée
+        # (P625 porte couramment plusieurs revendications de coordonnées pour un
+        # même lieu) — plusieurs lignes pour une seule et même entité, ce n'est pas
+        # une ambiguïté. On ne refuse de dater que si les lignes rendent effectivement
+        # plus d'une entité distincte.
         return None
     row = rows[0]
     lat = long = None
