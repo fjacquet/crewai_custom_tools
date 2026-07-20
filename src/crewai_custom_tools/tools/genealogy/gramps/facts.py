@@ -52,6 +52,15 @@ def person_from_json(raw: dict) -> PersonFacts:
     prof_cites = sum((profile.get(k) or {}).get("citations", 0) for k in ("birth", "death"))
     has_cite = bool(raw.get("citation_list")) or prof_cites > 0 or any(e.has_citation for e in events)
 
+    # Le lieu ne vit que dans le profile (chaînes lisibles), pas dans extended.events.
+    # On le surimpose donc sur la naissance et le décès, seuls événements que le profile
+    # décrit. Aucune requête supplémentaire : profile=all est déjà demandé.
+    for fact, cle in ((birth, "birth"), (death, "death")):
+        if fact is not None:
+            bloc = profile.get(cle) or {}
+            fact.place = bloc.get("place") or ""
+            fact.place_name = bloc.get("place_name") or ""
+
     return PersonFacts(
         gramps_id=raw.get("gramps_id", ""), handle=raw.get("handle", ""),
         name=f"{given} {surname}".strip(), surname=surname, given=given,

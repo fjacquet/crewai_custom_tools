@@ -98,6 +98,40 @@ def test_get_family_facts_returns_none_on_404():
     assert fetcher.get_family_facts("nope") is None
 
 
+def test_person_from_json_expose_le_lieu_de_naissance_depuis_le_profile():
+    raw = {"gramps_id": "I1234", "handle": "H1", "gender": 1,
+           "primary_name": {"first_name": "Jean",
+                            "surname_list": [{"surname": "Dupont"}]},
+           "profile": {"birth": {"date": "1677-07-15", "citations": 0,
+                                 "place": "Montbéliard, Doubs, Bourgogne-Franche-Comté, France",
+                                 "place_name": "Montbéliard"},
+                       "death": {}},
+           "extended": {"events": [
+               {"type": "Birth", "citation_list": [],
+                "date": {"sortval": 2334000, "year": 1677,
+                         "dateval": [15, 7, 1677, False], "modifier": 0, "quality": 0}}]},
+           "birth_ref_index": 0, "death_ref_index": -1,
+           "event_ref_list": [{"ref": "e1"}]}
+    p = person_from_json(raw)
+    assert p.birth.place == "Montbéliard, Doubs, Bourgogne-Franche-Comté, France"
+    assert p.birth.place_name == "Montbéliard"
+
+
+def test_person_from_json_lieu_absent_donne_chaine_vide():
+    raw = {"gramps_id": "I2016", "handle": "H2", "gender": 1,
+           "primary_name": {"first_name": "Silvain", "surname_list": [{"surname": "Roy"}]},
+           "profile": {"birth": {"date": "about 1762-12", "citations": 0,
+                                 "place": "", "place_name": ""}, "death": {}},
+           "extended": {"events": [
+               {"type": "Birth", "citation_list": [],
+                "date": {"sortval": 0, "year": 1762, "dateval": [], "modifier": 3,
+                         "quality": 0}}]},
+           "birth_ref_index": 0, "death_ref_index": -1,
+           "event_ref_list": [{"ref": "e1"}]}
+    p = person_from_json(raw)
+    assert p.birth.place == "" and p.birth.place_name == ""
+
+
 def test_get_person_facts_propagates_non_404():
     import pytest
     def handler(request):
