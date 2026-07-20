@@ -4,6 +4,19 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.18.0] - 2026-07-20
+
+### Fixed
+
+- **15 `BaseTool` subclasses were on neither the library nor the MCP surface.** `mcp_server.register_all` iterates `__all__`, so a tool missing from it is invisible on both surfaces; these had accumulated since 0.13.0 and were reachable only by full module path. Now exported: `GallicaSearchTool`, `WikidataSparqlTool`, `InseeDecesSearchTool`, `GenealogyCheckPersonTool`, `GenealogyFindDuplicatesTool`, `GenealogyResolvePlaceTool`, `GrampsCreateNoteTool`, `GrampsEnsureTagTool`, `GrampsAttachTool`, `GrampsEnsureSourceTool`, `GrampsCreateCitationTool`, `GrampsAttachCitationTool`, `GrampsAddUrlTool`, `GrampsAttachMediaTool`, `GrampsUploadMediaTool`. The MCP surface goes from 104 to **119** tools, all registering with zero skips.
+
+### Added
+
+- `tests/test_export_surface.py` — the reason the gap went unnoticed was that nothing checked it. Walks the package, asserts every defined `BaseTool` subclass appears in `__all__`, and asserts `register_all()` skips nothing.
+- `tests/test_genealogy_media_tools.py` — coverage for the URL/media writers shipped without tests in 0.17.0, including the guard that a `DRYRUN:` media handle is never written as a real `MediaRef`.
+
+---
+
 ## [0.17.0] - 2026-07-20
 
 ### Added
