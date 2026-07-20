@@ -4,6 +4,39 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.19.0] - 2026-07-20
+
+### Added
+
+- **Résolveur des ex-communes françaises** (`geo/france_ex_communes.py`) : les communes
+  fusionnées (loi Marcellin) sont absentes de `geo.api.gouv.fr/communes`, ce qui faisait
+  échouer `resolve_fr` et basculer sur Nominatim — lequel trouve le point mais perd toute
+  la hiérarchie. Le nouveau résolveur interroge `/communes_associees_deleguees` pour le
+  rattachement et le code INSEE propre, puis Wikidata (SPARQL par `P374`) pour la date de
+  dissolution, le successeur et les coordonnées.
+- Le lieu obtient **deux rattachements datés** : sous son département avant la fusion, sous
+  la commune absorbante après. La borne est `merged_on` = dissolution + 1 jour — poser la
+  date de dissolution ferait démarrer le rattachement moderne un jour où la commune existait
+  encore.
+- `sparql_rows()` dans `tools/web/wikidata.py` : transport SPARQL libre, utilisable hors
+  d'un `BaseTool` CrewAI.
+- `pick_exact_by_name()` dans `geo/france.py`, extrait de `_resolve_fr_by_name` sans
+  changement de comportement et partagé par les deux résolveurs français.
+
+### Notes
+
+- **Garde de recoupement** : les chaînes ne sont datées que si le successeur donné par
+  Wikidata concorde avec le `chefLieu` de `geo.api.gouv.fr`. Sinon, ou si la date est
+  incalculable, une seule chaîne non datée — jamais de date inventée, une fausse date de
+  fusion routant silencieusement des actes vers la mauvaise branche.
+- **GPS** : les coordonnées Wikidata (centre du bourg) priment sur le `centre` de l'API
+  (centroïde du territoire), ~700 m d'écart mesuré. Exception assumée à `map_commune`.
+- Couverture mesurée sur 12 ex-communes de la Meuse : Wikidata `P576` 12/12 en précision
+  jour, avec des dates variées (1972-06-30, 1973-02-28) que l'année seule de Wikipédia
+  aurait perdues.
+
+---
+
 ## [0.18.0] - 2026-07-20
 
 ### Fixed
