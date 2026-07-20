@@ -7,6 +7,30 @@ on:
     branches: [ main ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install Package and Dependencies
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      - name: Run Ruff
+        run: |
+          ruff check src tests
+
   test:
     runs-on: ubuntu-latest
     strategy:
