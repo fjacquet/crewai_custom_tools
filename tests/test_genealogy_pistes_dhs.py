@@ -28,3 +28,34 @@ def test_ligne_avec_p902_produit_une_piste_dhs():
     # Les concordances sont héritées de la ligne Wikidata dont elle dérive.
     assert set(p.concordances) == {"nom", "date complète", "lieu"}
     assert p.force == "forte"
+
+
+def test_lignes_melangees_ne_decale_pas_les_identifiants_dhs():
+    """Preuve anti-appariement positionnel.
+
+    Trois lignes, dans cet ordre : (1) sans P902 -> ignorée ; (2) avec P902
+    mais sans URI exploitable -> ignorée aussi (comme `pistes_wikidata` le
+    ferait) ; (3) avec P902 ET une URI valide -> seule ligne productrice.
+
+    Si `pistes_dhs` appariait un jour les deux listes par position (un `zip`
+    entre `resultats` et `pistes_wikidata(...)`) au lieu de dériver ligne par
+    ligne, l'identifiant DHS de la ligne 2 ("999999", jamais censé sortir)
+    se retrouverait collé à la piste réellement produite. Des identifiants
+    P902 distincts entre les lignes 2 et 3 rendent ce décalage détectable :
+    seul `identite == "012345"` (celui de la ligne 3) doit sortir.
+    """
+    rows = [
+        # 1. Sans P902 : ignorée.
+        {"item": "http://www.wikidata.org/entity/Q1", "itemLabel": "Louis Perret",
+         "birthDate": "1800-04-03T00:00:00Z", "birthPlaceLabel": "Lausanne"},
+        # 2. P902 présent mais URI inexploitable (clé "item" absente) : ignorée.
+        {"itemLabel": "Louis Perret", "birthDate": "1800-04-03T00:00:00Z",
+         "birthPlaceLabel": "Lausanne", "p902": "999999"},
+        # 3. P902 présent et URI valide : seule ligne qui doit produire une piste.
+        {"item": "http://www.wikidata.org/entity/Q42", "itemLabel": "Louis Perret",
+         "birthDate": "1800-04-03T00:00:00Z", "birthPlaceLabel": "Lausanne",
+         "p902": "012345"},
+    ]
+    pistes = pistes_dhs(_person(), rows)
+    assert len(pistes) == 1
+    assert pistes[0].identite == "012345"
