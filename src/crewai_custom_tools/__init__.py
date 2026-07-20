@@ -1,6 +1,6 @@
 """Centralized CrewAI custom tools library."""
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 
 # 1. Web Search & Scraping
 from crewai_custom_tools.tools.web.perplexity import PerplexitySearchTool
@@ -28,6 +28,8 @@ from crewai_custom_tools.tools.web.places import GeoapifyPlacesTool
 from crewai_custom_tools.tools.web.tech_stack import TechStackTool
 from crewai_custom_tools.tools.web.wikipedia_processing import WikipediaProcessingTool
 from crewai_custom_tools.tools.web.rss_aggregator import RSSFeedTool, UnifiedRssTool
+from crewai_custom_tools.tools.web.gallica import GallicaSearchTool
+from crewai_custom_tools.tools.web.wikidata import WikidataSparqlTool
 
 # 2. Stocks & Market Data
 from crewai_custom_tools.tools.finance.yfinance_ticker import YahooFinanceTickerInfoTool
@@ -115,7 +117,22 @@ from crewai_custom_tools.tools.genealogy.gramps.write_tools import (
     GrampsCreatePlaceTool,
     GrampsUpdatePlaceTool,
     GrampsMergePlacesTool,
+    GrampsCreateNoteTool,
+    GrampsEnsureTagTool,
+    GrampsAttachTool,
+    GrampsEnsureSourceTool,
+    GrampsCreateCitationTool,
+    GrampsAttachCitationTool,
+    GrampsAddUrlTool,
+    GrampsAttachMediaTool,
+    GrampsUploadMediaTool,
 )
+from crewai_custom_tools.tools.genealogy.analysis.tools import (
+    GenealogyCheckPersonTool,
+    GenealogyFindDuplicatesTool,
+)
+from crewai_custom_tools.tools.genealogy.geo.tools import GenealogyResolvePlaceTool
+from crewai_custom_tools.tools.genealogy.matchid import InseeDecesSearchTool
 
 # 5. Reports & PDFs formatting
 from crewai_custom_tools.reporting.html_generator import RenderReportTool, validate_html
@@ -178,6 +195,8 @@ __all__ = [
     "GeoapifyPlacesTool",
     "TechStackTool",
     "WikipediaProcessingTool",
+    "GallicaSearchTool",
+    "WikidataSparqlTool",
     "RSSFeedTool",
     "UnifiedRssTool",
     "BraveSearchTool",
@@ -248,6 +267,19 @@ __all__ = [
     "GrampsCreatePlaceTool",
     "GrampsUpdatePlaceTool",
     "GrampsMergePlacesTool",
+    "GrampsCreateNoteTool",
+    "GrampsEnsureTagTool",
+    "GrampsAttachTool",
+    "GrampsEnsureSourceTool",
+    "GrampsCreateCitationTool",
+    "GrampsAttachCitationTool",
+    "GrampsAddUrlTool",
+    "GrampsAttachMediaTool",
+    "GrampsUploadMediaTool",
+    "GenealogyCheckPersonTool",
+    "GenealogyFindDuplicatesTool",
+    "GenealogyResolvePlaceTool",
+    "InseeDecesSearchTool",
     # Reporting Tools
     "validate_html",
     "RenderReportTool",
