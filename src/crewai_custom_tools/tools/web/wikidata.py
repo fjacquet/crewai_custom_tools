@@ -15,6 +15,25 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 USER_AGENT = "crewai-custom-tools/genealogy (research tool)"
 
 
+def sparql_rows(query: str, *, timeout: float = 30.0) -> list[dict[str, str]]:
+    """Run a SPARQL query and return its bindings flattened as {variable: value}.
+
+    Free transport shared by the CrewAI tool and the geo resolvers (which must not
+    depend on a BaseTool). Raises on HTTP error.
+    """
+    response = requests.get(
+        SPARQL_ENDPOINT,
+        params={"query": query, "format": "json"},
+        headers={"User-Agent": USER_AGENT,
+                 "Accept": "application/sparql-results+json"},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    bindings = response.json().get("results", {}).get("bindings", [])
+    return [{var: cell.get("value") for var, cell in binding.items()}
+            for binding in bindings]
+
+
 class WikidataSparqlInput(BaseModel):
     """Input model for the WikidataSparqlTool."""
 
