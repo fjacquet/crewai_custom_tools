@@ -24,3 +24,6 @@ site/
 .cache/
 .playwright-mcp/
 cassini.html
+
+# Claude Code personal notes
+.claude.local.md
