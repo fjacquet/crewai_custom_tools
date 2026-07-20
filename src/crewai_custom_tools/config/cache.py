@@ -165,7 +165,7 @@ class CacheManager:
         # Clear memory cache expired entries to keep it clean
         expired_mem_keys = []
         for key, cached_data in list(self.memory_cache.items()):
-            val, timestamp, expiry = cached_data[0], cached_data[1], cached_data[2]
+            timestamp, expiry = cached_data[1], cached_data[2]
             if ttl is not None:
                 if time.time() - timestamp >= ttl:
                     expired_mem_keys.append(key)

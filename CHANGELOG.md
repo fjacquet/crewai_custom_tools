@@ -4,6 +4,18 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.19.1] - 2026-07-20
+
+### Fixed
+
+- `ruff check src tests` is clean (was 19 errors, long-standing). Removed 4 genuinely unused imports in tests, dropped a dead unpacking in `config/cache.py` (`val` was bound and never read), split a semicolon statement, and declared `__all__` in `core/__init__.py` so the `api_tool` re-export is explicit rather than an apparently-unused import.
+
+### Changed
+
+- Added a `[tool.ruff.lint.per-file-ignores]` section — the repo had no ruff config at all. `models/__init__.py` and `models/reports/__init__.py` are pure re-export aggregators, so `F403` is suppressed there with a comment explaining why: enumerating the 51 re-exported names by hand would risk silently dropping one from the public surface. Verified unchanged at 51 names.
+
+---
+
 ## [0.19.0] - 2026-07-20
 
 ### Added

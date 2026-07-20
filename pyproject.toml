@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "crewai-custom-tools"
-version = "0.19.0"
+version = "0.19.1"
 description = "Centralized, resilient tools for CrewAI multi-agent systems"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -60,3 +60,11 @@ crewai-custom-tools-mcp = "crewai_custom_tools.mcp_server:run"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["scripts"]
+
+[tool.ruff.lint.per-file-ignores]
+# These __init__.py files are pure re-export aggregators: they only widen the
+# namespace and reference none of the names themselves, which is exactly the
+# case F403 cannot reason about. Enumerating the ~51 re-exported names by hand
+# would risk silently dropping one from the public surface.
+"src/crewai_custom_tools/models/__init__.py" = ["F403"]
+"src/crewai_custom_tools/models/reports/__init__.py" = ["F403"]

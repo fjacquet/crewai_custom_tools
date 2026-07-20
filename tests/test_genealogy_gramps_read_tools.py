@@ -3,7 +3,6 @@
 import json
 
 import httpx
-import pytest
 
 from crewai_custom_tools.tools.genealogy.gramps.client import GrampsClient, GrampsConfig
 from crewai_custom_tools.tools.genealogy.gramps.read_tools import (

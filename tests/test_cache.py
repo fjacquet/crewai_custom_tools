@@ -1,6 +1,4 @@
-import pytest
 import time
-from pathlib import Path
 from crewai_custom_tools.config.cache import (
     CacheManager,
     get_cache_manager,

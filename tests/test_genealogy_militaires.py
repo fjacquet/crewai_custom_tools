@@ -82,7 +82,8 @@ def test_query_returns_all_rows_for_common_surnames(tmp_path):
     rows.append(("b", "CLAVIER", "clavier", "Léon", "1891-08-31", "St-Martin", "", "",
                  "1914-10-01", "", "", "", "", "https://ark/leon", "f"))
     con.executemany("INSERT INTO deces_militaires VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-    con.commit(); con.close()
+    con.commit()
+    con.close()
     scored = match_militaires("Clavier", "Léon", "1891-08-31", db=path)
     assert scored and scored[0][0]["prenom"] == "Léon" and scored[0][1] == 1.0
 

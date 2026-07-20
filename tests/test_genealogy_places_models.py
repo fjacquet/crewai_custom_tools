@@ -1,6 +1,6 @@
 # crewai_custom_tools/tests/test_genealogy_places_models.py
 from crewai_custom_tools.tools.genealogy.models.domain import (
-    ParsedPlace, PlaceLevel, DatedChain, DatedName,
+    PlaceLevel, DatedChain, DatedName,
     ResolvedPlace, PlaceProposition, PlaceMergeProposition,
 )
 
