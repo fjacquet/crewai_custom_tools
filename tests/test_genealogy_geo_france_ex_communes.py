@@ -26,6 +26,36 @@ def test_parse_wkt_point_rejects_garbage():
     assert fec.parse_wkt_point("MULTIPOLYGON((0 0))") is None
 
 
+def test_merged_on_from_dissolved_year_boundary():
+    # Amblaincourt (Meuse) : passage d'année.
+    assert fec.merged_on_from_dissolved("1972-12-31") == "1973-01-01"
+
+
+def test_merged_on_from_dissolved_month_boundary():
+    # Auzécourt (Meuse) : passage de mois.
+    assert fec.merged_on_from_dissolved("1972-06-30") == "1972-07-01"
+
+
+def test_merged_on_from_dissolved_end_of_february_non_leap_year():
+    # Billy-sous-les-Côtes (Meuse) : fin février, année non bissextile.
+    assert fec.merged_on_from_dissolved("1973-02-28") == "1973-03-01"
+
+
+def test_merged_on_from_dissolved_leap_year():
+    # Cas bissextile, à ne pas rater : le lendemain du 28 février 1972 est le 29,
+    # pas le 1er mars.
+    assert fec.merged_on_from_dissolved("1972-02-28") == "1972-02-29"
+
+
+def test_merged_on_from_dissolved_none_is_none():
+    assert fec.merged_on_from_dissolved(None) is None
+
+
+def test_merged_on_from_dissolved_unparsable_is_none():
+    # Une année seule n'est pas une date ISO complète — pas d'exception levée.
+    assert fec.merged_on_from_dissolved("1973") is None
+
+
 def test_wikidata_ex_commune_single_row(monkeypatch):
     seen = {}
 
@@ -37,6 +67,7 @@ def test_wikidata_ex_commune_single_row(monkeypatch):
     facts = fec.wikidata_ex_commune("55451")
     assert facts is not None
     assert facts.dissolved == "1972-12-31"           # tronqué à la date ISO
+    assert facts.merged_on == "1973-01-01"           # dissolution + 1 jour
     assert facts.successor_insee == "55012"
     assert facts.lat == "48.842142" and facts.long == "5.622588"
     assert '"55451"' in seen["query"] and "wdt:P374" in seen["query"]
@@ -84,7 +115,8 @@ def test_wikidata_ex_commune_missing_optionals(monkeypatch):
                         lambda query: [{"item": "http://www.wikidata.org/entity/Q1"}])
     facts = fec.wikidata_ex_commune("55451")
     assert facts is not None
-    assert facts.dissolved is None and facts.successor_insee is None
+    assert facts.dissolved is None and facts.merged_on is None
+    assert facts.successor_insee is None
     assert facts.lat is None and facts.long is None
 
 
@@ -158,7 +190,8 @@ def _fake_api(associees, chef=_CHEF_LIEU):
 
 
 def _facts(**kw):
-    defaults = {"dissolved": "1972-12-31", "successor_insee": "55012",
+    defaults = {"dissolved": "1972-12-31", "merged_on": "1973-01-01",
+                "successor_insee": "55012",
                 "lat": "48.842142", "long": "5.622588"}
     return fec.ExCommuneFacts(**{**defaults, **kw})
 
@@ -178,9 +211,9 @@ def test_resolve_ex_commune_emits_two_dated_chains(monkeypatch):
 
     assert len(rp.chains) == 2
     historique, moderne = rp.chains[0], rp.chains[1]
-    assert historique.date_qualifier == "avant 1972-12-31"
+    assert historique.date_qualifier == "avant 1973-01-01"
     assert [lvl.name for lvl in historique.levels] == ["France", "Grand Est", "Meuse"]
-    assert moderne.date_qualifier == "après 1972-12-31"
+    assert moderne.date_qualifier == "après 1973-01-01"
     assert [lvl.name for lvl in moderne.levels] == [
         "France", "Grand Est", "Meuse", "Apremont-la-Forêt"]
     assert moderne.levels[-1].code == "55012"
@@ -204,10 +237,25 @@ def test_resolve_ex_commune_successor_mismatch_degrades_to_single_chain(monkeypa
 
 def test_resolve_ex_commune_without_dissolution_date_is_undated(monkeypatch):
     monkeypatch.setattr(fec, "_http_get", _fake_api([_ASSOCIEE]))
-    monkeypatch.setattr(fec, "wikidata_ex_commune", lambda insee: _facts(dissolved=None))
+    monkeypatch.setattr(fec, "wikidata_ex_commune",
+                        lambda insee: _facts(dissolved=None, merged_on=None))
     rp = fec.resolve_fr_ex_commune(_PARSED)
     assert rp is not None and len(rp.chains) == 1
     assert rp.chains[0].date_qualifier is None
+
+
+def test_resolve_ex_commune_dissolved_but_unparsable_merged_on_is_undated(monkeypatch):
+    # Wikidata rend bien `dissolved`, mais la borne dérivée n'a pas pu être calculée
+    # (ex. réponse SPARQL avec une précision insuffisante) : `merged_on` est absent,
+    # et la garde de recoupement doit refuser de dater — une seule chaîne non datée,
+    # pas de repli silencieux sur `dissolved`.
+    monkeypatch.setattr(fec, "_http_get", _fake_api([_ASSOCIEE]))
+    monkeypatch.setattr(fec, "wikidata_ex_commune",
+                        lambda insee: _facts(dissolved="1972-12-31", merged_on=None))
+    rp = fec.resolve_fr_ex_commune(_PARSED)
+    assert rp is not None and len(rp.chains) == 1
+    assert rp.chains[0].date_qualifier is None
+    assert rp.source == "geo.api.gouv.fr/communes_associees_deleguees"
 
 
 def test_resolve_ex_commune_without_wikidata_falls_back_to_api_gps(monkeypatch):

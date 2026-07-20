@@ -11,6 +11,7 @@ On ne date les rattachements que si les deux sources concordent sur le successeu
 from __future__ import annotations
 
 import re
+from datetime import date, timedelta
 
 import httpx
 import requests
@@ -39,10 +40,38 @@ _SPARQL = """SELECT ?item ?dissolved ?succInsee ?coord WHERE {{
 class ExCommuneFacts(BaseModel):
     """Ce que Wikidata sait d'une ex-commune, identifiée par son code INSEE."""
 
-    dissolved: str | None = None          # "YYYY-MM-DD"
+    dissolved: str | None = None          # "YYYY-MM-DD" — DERNIER jour d'existence
+                                           # (P576, fait brut de Wikidata ; ce n'est PAS
+                                           # le premier jour du rattachement moderne)
+    merged_on: str | None = None          # "YYYY-MM-DD" — PREMIER jour du rattachement
+                                           # (dissolved + 1 jour) ; c'est cette date qui
+                                           # doit dater les DatedChain, pas `dissolved`
     successor_insee: str | None = None
     lat: str | None = None                # WGS84 décimal
     long: str | None = None
+
+
+def merged_on_from_dissolved(dissolved: str | None) -> str | None:
+    """Lendemain de `dissolved`, en date calendaire — pas en manipulation de chaîne.
+
+    P576 donne le DERNIER jour d'existence de la commune (`dissolved`) ; le premier
+    jour de son rattachement moderne (`merged_on`) est le jour suivant. Wikipédia
+    l'énonce ainsi en toutes lettres (« Le 1er janvier 1973, la commune est
+    rattachée à… ») pour une dissolution au 1972-12-31 — vérifié concordant sur
+    plusieurs communes de la Meuse.
+
+    Passe par `datetime.date` (et `timedelta(days=1)`) pour que les passages de
+    mois et d'année, ainsi que le 29 février des années bissextiles, soient
+    justes. `None` si `dissolved` est absent ou non parsable (ex. une année
+    seule comme "1973") — ne lève jamais.
+    """
+    if not dissolved:
+        return None
+    try:
+        day = date.fromisoformat(dissolved)
+    except ValueError:
+        return None
+    return (day + timedelta(days=1)).isoformat()
 
 
 def parse_wkt_point(wkt: str) -> tuple[str, str] | None:
@@ -90,8 +119,10 @@ def wikidata_ex_commune(insee: str) -> ExCommuneFacts | None:
         if point is not None:
             lat, long = point
     dissolved = row.get("dissolved")
+    dissolved_date = dissolved.split("T")[0] if dissolved else None
     return ExCommuneFacts(
-        dissolved=dissolved.split("T")[0] if dissolved else None,
+        dissolved=dissolved_date,
+        merged_on=merged_on_from_dissolved(dissolved_date),
         successor_insee=row.get("succInsee"),
         lat=lat, long=long,
     )
@@ -139,15 +170,16 @@ def resolve_fr_ex_commune(parsed: ParsedPlace) -> ResolvedPlace | None:
 
     facts = wikidata_ex_commune(ex["code"])
     # Garde de recoupement : on ne date que si les DEUX sources désignent le même
-    # successeur. Une date de fusion fausse route silencieusement les événements
+    # successeur ET que la borne du rattachement (merged_on, pas dissolved) est
+    # calculable. Une date de fusion fausse route silencieusement les événements
     # vers la mauvaise branche — pire qu'une date absente.
-    concordant = (facts is not None and facts.dissolved
+    concordant = (facts is not None and facts.merged_on
                   and facts.successor_insee == chef_code)
     if concordant:
         chains = [
-            DatedChain(levels=parents, date_qualifier=f"avant {facts.dissolved}"),
+            DatedChain(levels=parents, date_qualifier=f"avant {facts.merged_on}"),
             DatedChain(levels=parents + [chef_level],
-                       date_qualifier=f"après {facts.dissolved}"),
+                       date_qualifier=f"après {facts.merged_on}"),
         ]
         source = "geo.api.gouv.fr/communes_associees_deleguees + Wikidata"
     else:
