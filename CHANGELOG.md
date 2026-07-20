@@ -4,6 +4,83 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.17.0] - 2026-07-20
+
+### Added
+
+- **Military-death gazetteer matching** (`tools/genealogy/militaires.py`) — queries the "Morts pour la France" dataset and scores candidates through a new shared identity module (`analysis/identity.py`), so death matching and military matching now share one scoring contract instead of duplicating heuristics.
+- **Place Wikipedia enrichment primitives**: frwiki geosearch (`tools/web/wikipedia.py`) plus Gramps URL/media write tools (`GrampsAddUrlTool`, `GrampsAttachMediaTool`, `GrampsUploadMediaTool` in `gramps/write_tools.py`) — attaches a Wikipedia article and its lead image to a resolved place.
+
+### Fixed
+
+- Militaires query limit raised 50 → 2000: common surnames pushed the correct row off the truncated result page, so the right match was never scored.
+- Nominatim requests now send `accept-language=fr`. Toponyms returned in a local script (Cyrillic, Greek, Arabic) scored near zero against the French tree name and silently lost their match.
+
+---
+
+## [0.16.0] - 2026-07-19
+
+### Added
+
+- **source→citation write chain** (`gramps/write_tools.py`): `GrampsEnsureSourceTool` (idempotent source lookup-or-create), `GrampsCreateCitationTool`, `GrampsAttachCitationTool` — lets a run turn a validated external find into a real Gramps citation attached to the object it supports.
+- **D-rules** (`analysis/`): pure, deterministic correction detectors that reproduce the LLM crew's finds at zero token cost.
+
+### Fixed
+
+- Death-match scoring strips tree-artifact commas from given names before comparison.
+- Year-only birth concordance is capped at 0.5, so a bare year agreement can never cross the match threshold on its own.
+- `D-mariage-des-parents` also matches on same-year dates — real trees mix date precisions.
+
+---
+
+## [0.15.0] - 2026-07-19
+
+### Added
+
+- **Deterministic MatchID death scoring** (`tools/genealogy/matchid.py`): `search_deces` plus `score`/`best_deces_match`, replacing LLM judgement with a reproducible scoring function.
+
+### Fixed
+
+- The Wikipedia tool's `action` field is a `Literal` rather than an enum, so the generated schema is inlined instead of emitting a `$ref` that several LLM providers reject.
+
+---
+
+## [0.14.0] - 2026-07-19
+
+### Fixed
+
+- **Provider-portable input schemas** — removed `Optional` unions from the schemas of crew-wired tools. Union types serialize to `anyOf`, which some LLM tool-calling providers refuse, making the affected tools uncallable.
+
+### Changed
+
+- Untracked local artifacts (`.cache`, `.playwright-mcp`, `cassini.html`) swept into the repo by a bulk `git add`.
+
+---
+
+## [0.13.0] - 2026-07-19
+
+### Added
+
+- **On-demand analysis tools**: `GenealogyCheckPersonTool` and `GenealogyFindDuplicatesTool` (`analysis/tools.py`) expose the pure consistency rules to an agent; `GenealogyResolvePlaceTool` (`geo/tools.py`) exposes the geo engine.
+- **Free external research APIs**: `WikidataSparqlTool` (`tools/web/wikidata.py`), `GallicaSearchTool` (`tools/web/gallica.py`), `InseeDecesSearchTool` (`tools/genealogy/matchid.py`) — keyless sources for corroborating a fact.
+- **Append-only note/tag write tools**: `GrampsCreateNoteTool`, `GrampsEnsureTagTool`, `GrampsAttachTool` — a run records its findings without mutating existing data.
+- **US place resolver** via an embedded Census Gazetteer, and an **authoritative Germany resolver** (AGS + name/Land) backed by an embedded BKG VG250 gazetteer of 10 981 communes (`scripts/` build script included). 8-digit AGS codes parse as authoritative German codes while keeping the Land.
+- Resolve French places **by name** — a unique hit is authoritative, homonyms become a proposition.
+- `FactsFetcher` + facts mappers migrated from genecrew: domain logic belongs in this package, not in the orchestration repo.
+- Monotone core-name `best_similarity` in `geo/score.py`; colonial-era country transitions added to `data/transitions.csv`.
+- JWT is cached to disk (atomic write, mode 0600, non-dict guard, login retry on 429) so repeated invocations stop re-authenticating and tripping rate limits.
+
+### Fixed
+
+- `GrampsCreatePlaceTool` reads the transaction array returned by the 201 response (live bug — the created handle was never recovered).
+- Ambiguity now wins over a score of 1.0; a lone postal code is no longer parsed as an INSEE code.
+- A right-truncated flat place name parses as a commune, not a country.
+- Swiss and Nominatim resolvers score the core name and pick the argmax; the Swiss resolver restricts to municipalities and adds the canton to the chain (`Suisse > Canton > Commune`); Nominatim drops the importance multiplier.
+- US resolver uses the parsed region for the state, with a collision guard.
+- Geo resolvers are throttled, transitions are cached, and the place tools are exported.
+
+---
+
 ## [0.12.0] - 2026-07-19
 
 ### Added
