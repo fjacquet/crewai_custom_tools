@@ -4,6 +4,25 @@ All notable changes to the `crewai-custom-tools` project will be documented in t
 
 ---
 
+## [0.21.1] - 2026-07-20
+
+### Fixed
+
+- **Aucune piste sans concordance.** `pistes_wikidata` émettait une `Piste` pour *chaque*
+  résultat de recherche, alors que `mwapi/EntitySearch` est une recherche **floue** sur le
+  nom : on publiait la sortie brute d'un moteur de recherche comme des « pistes ». Mesuré
+  sur 40 personnes d'un arbre réel : 13 des 21 pistes émises (62 %) ne portaient **aucun**
+  facteur de concordance. Une ligne sans concordance ne produit désormais plus rien — une
+  divergence seule ne suffit pas non plus. `pistes_dhs` en hérite sans modification, car il
+  saute déjà les lignes dont `pistes_wikidata` ne tire rien. Wikidata passe de 21 à 8 pistes
+  sur cet échantillon, le DHS de 2 à 1.
+- **Patronyme vide.** Dans `pistes_wikidata`, `mots(person.surname) <= mots_label` était
+  *vacuement vrai* quand le patronyme est vide : un prénom commun suffisait alors à décrocher
+  le facteur « nom » sans aucune preuve de patronyme. La garde existait déjà mot pour mot dans
+  le module frère `gallica.py` ; les deux sont désormais alignés.
+
+---
+
 ## [0.21.0] - 2026-07-20
 
 ### Added

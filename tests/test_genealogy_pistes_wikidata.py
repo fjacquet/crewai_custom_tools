@@ -93,3 +93,40 @@ def test_lieu_absent_de_l_arbre_ne_compte_pas():
 
 def test_aucun_resultat_rend_liste_vide():
     assert pistes_wikidata(_person(), []) == []
+
+
+def test_ligne_sans_aucune_concordance_ne_produit_aucune_piste():
+    # EntitySearch est une recherche FLOUE : un résultat sans nom, date ni lieu
+    # correspondants n'est pas une piste, c'est du bruit du moteur de recherche.
+    person = _person(surname="Dupont", given="Jean", place_name="Montbéliard")
+    rows = [{"item": "http://www.wikidata.org/entity/Q999",
+             "itemLabel": "Marguerite Lefebvre",
+             "birthDate": "1901-01-01T00:00:00Z",
+             "birthPlaceLabel": "Marseille"}]
+    assert pistes_wikidata(person, rows) == []
+
+
+def test_patronyme_vide_ne_decroche_pas_le_facteur_nom():
+    # Garde symétrique à celle de pistes/gallica.py : `mots(person.surname) <=
+    # mots_label` est vacuement vrai quand le patronyme est vide, ce qui
+    # laisserait un simple prénom commun décrocher "nom" sans aucune preuve de
+    # patronyme. Date complète concordante ajoutée pour isoler le facteur
+    # "nom" : sans la garde, les DEUX facteurs concordent (piste "forte") ;
+    # avec la garde, seule la date concorde (piste "faible", pas de "nom").
+    person = _person(surname="", given="Jean", place_name="")
+    rows = [{"item": "http://www.wikidata.org/entity/Q999", "itemLabel": "Jean Dupont",
+             "birthDate": "1677-07-15T00:00:00Z", "birthPlaceLabel": ""}]
+    p = pistes_wikidata(person, rows)[0]
+    assert "nom" not in p.concordances
+    assert p.force == "faible"
+
+
+def test_divergence_sans_concordance_ne_produit_pas_de_piste():
+    # Une date qui diverge, sans nom ni lieu qui corrobore, ne corrobore rien :
+    # une divergence seule ne doit pas suffire à fabriquer une piste faible.
+    person = _person(surname="Dupont", given="Jean", place_name="Montbéliard")
+    rows = [{"item": "http://www.wikidata.org/entity/Q999",
+             "itemLabel": "Marguerite Lefebvre",
+             "birthDate": "1901-01-01T00:00:00Z",
+             "birthPlaceLabel": ""}]
+    assert pistes_wikidata(person, rows) == []
