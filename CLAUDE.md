@@ -27,7 +27,7 @@ python scripts/generate_sbom.py        # Regenerate sbom.json
 
 CI (`.github/workflows/ci.yml`) runs `python -m pytest -v` against Python 3.11, 3.12, and 3.13 on every push/PR to `main`. Docs deploy to GitHub Pages on push to `main`.
 
-Ruff is used for linting (`.ruff_cache/` present) but is not wired into CI — run `ruff check src tests` manually if touching style.
+Ruff runs in CI as its own `lint` job (`ruff check src tests`, must be clean) and ships in `[dev]`, so `uv run ruff check src tests` locally uses the same version. `models/__init__.py` and `models/reports/__init__.py` ignore `F403` via `[tool.ruff.lint.per-file-ignores]` — they are pure re-export aggregators.
 
 ## Architecture
 
