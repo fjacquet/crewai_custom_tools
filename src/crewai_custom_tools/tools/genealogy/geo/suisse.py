@@ -41,6 +41,12 @@ def _split_label(label: str) -> tuple[str, str | None]:
     return label.strip(), None
 
 
+def split_canton_suffix(label: str) -> tuple[str, str | None]:
+    """'Montreux (VD)' -> ('Montreux', 'Vaud'). Alias public de `_split_label`, utilisé par
+    le parseur de lieux pour reconnaître un nom suisse dépourvu de segment pays."""
+    return _split_label(label)
+
+
 def _http_get(url: str, params: dict) -> dict:
     get_rate_limiter().acquire(_PROVIDER)
     resp = httpx.get(url, params=params, timeout=15.0)
