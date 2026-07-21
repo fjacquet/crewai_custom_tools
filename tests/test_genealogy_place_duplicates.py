@@ -5,8 +5,11 @@ import pytest
 from crewai_custom_tools.tools.genealogy.analysis.place_duplicates import (
     PREUVE_CODE,
     PREUVE_COORDONNEES,
+    choisir_survivant,
     evaluer_preuve,
     normaliser_nom_lieu,
+    perte_evitee,
+    richesse,
 )
 from crewai_custom_tools.tools.genealogy.models.domain import PlaceFacts
 
@@ -284,3 +287,50 @@ def test_le_verdict_est_symetrique(a, b):
 def test_les_constantes_de_verdict_sont_les_valeurs_rendues():
     """Les deux verdicts sont exportés : l'appelant n'a pas à recopier de littéral."""
     assert (PREUVE_CODE, PREUVE_COORDONNEES) == ("code", "coordonnees")
+
+
+def test_richesse_compte_les_attributs_renseignes():
+    assert richesse(_lieu("P1")) == 0
+    assert richesse(_lieu("P1", lat="47.1", long="2.3")) == 1
+    assert richesse(_lieu("P1", lat="47.1", long="2.3", code="18044", a_parent=True)) == 3
+
+
+def test_le_plus_riche_gagne_meme_avec_moins_de_retroliens():
+    """C'est le cœur de la règle : garder la coquille vide effacerait ses coordonnées."""
+    pauvre = _lieu("P0387", retroliens=50)
+    riche = _lieu("P0148", lat="48.8467", long="5.6", code="55012", retroliens=1)
+    assert choisir_survivant([pauvre, riche]).gramps_id == "P0148"
+
+
+def test_a_richesse_egale_les_retroliens_departagent():
+    a = _lieu("P0064", lat="47.1", long="2.3", code="18044", retroliens=53)
+    b = _lieu("P0070", lat="47.1", long="2.3", code="18044", retroliens=4)
+    assert choisir_survivant([a, b]).gramps_id == "P0064"
+
+
+def test_a_egalite_complete_le_plus_petit_identifiant_tranche():
+    """Quantilly : cinq événements de chaque côté, mêmes données. La règle reste totale."""
+    a = _lieu("P0184", lat="47.2", long="2.5", code="18189", retroliens=5)
+    b = _lieu("P0059", lat="47.2", long="2.5", code="18189", retroliens=5)
+    assert choisir_survivant([a, b]).gramps_id == "P0059"
+
+
+def test_survivant_sur_une_grappe_de_trois():
+    a = _lieu("P0178", lat="45.6", long="6.4", code="73312", retroliens=4)
+    b = _lieu("P0192", lat="45.6", long="6.4", code="73312", retroliens=19)
+    c = _lieu("P0198", lat="45.6", long="6.4", code="73312", retroliens=5)
+    assert choisir_survivant([a, b, c]).gramps_id == "P0192"
+
+
+def test_perte_evitee_nomme_ce_qui_aurait_disparu():
+    riche = _lieu("P0148", lat="48.8467", long="5.6", code="55012")
+    pauvre = _lieu("P0387")
+    assert perte_evitee(riche, pauvre) == ""          # rien à perdre dans ce sens
+    texte = perte_evitee(pauvre, riche)
+    assert "coordonnées" in texte and "code" in texte
+
+
+def test_perte_evitee_vide_quand_les_deux_sont_egaux():
+    a = _lieu("P1", lat="47.1", long="2.3", code="18044")
+    b = _lieu("P2", lat="47.1", long="2.3", code="18044")
+    assert perte_evitee(a, b) == ""

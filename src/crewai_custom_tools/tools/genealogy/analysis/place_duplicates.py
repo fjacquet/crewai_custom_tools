@@ -15,10 +15,8 @@ import unicodedata
 from crewai_custom_tools.tools.genealogy.models.domain import PlaceFacts
 
 __all__ = [
-    "PREUVE_CODE",
-    "PREUVE_COORDONNEES",
-    "evaluer_preuve",
-    "normaliser_nom_lieu",
+    "choisir_survivant", "evaluer_preuve", "normaliser_nom_lieu",
+    "perte_evitee", "richesse",
 ]
 
 # Les ligatures ne sont pas des accents : NFD ne les décompose pas. « Vœuil-et-Giget »
@@ -110,3 +108,38 @@ def evaluer_preuve(a: PlaceFacts, b: PlaceFacts) -> str:
     if all(coord_a) and coord_a == (_renseigne(b.lat), _renseigne(b.long)):
         return PREUVE_COORDONNEES
     return ""
+
+
+def richesse(p: PlaceFacts) -> int:
+    """Nombre d'attributs renseignés parmi coordonnées, code, parent (0 à 3). Pur."""
+    return sum((bool(p.lat and p.long), bool(p.code), bool(p.a_parent)))
+
+
+def choisir_survivant(lieux: list[PlaceFacts]) -> PlaceFacts:
+    """Le lieu qui survit à la fusion du groupe. Pur.
+
+    Richesse d'abord, rétroliens ensuite, identifiant le plus petit en dernier
+    recours — la règle doit être TOTALE pour que deux exécutions donnent le même
+    résultat sur des données identiques.
+
+    L'ordre n'est pas un confort : la fusion Gramps unionne les listes mais les
+    champs simples restent ceux du survivant. Garder une coquille vide contre un
+    lieu renseigné effacerait définitivement ses coordonnées et son code.
+    """
+    return min(lieux, key=lambda p: (-richesse(p), -p.retroliens, p.gramps_id))
+
+
+def perte_evitee(survivant: PlaceFacts, absorbe: PlaceFacts) -> str:
+    """Ce que l'ordre inverse aurait effacé, en clair ; vide s'il n'y a rien. Pur.
+
+    Sert le rapport : une règle de sélection qu'on ne peut pas vérifier après coup
+    est une règle qu'on croit sur parole.
+    """
+    manquants = []
+    if (absorbe.lat and absorbe.long) and not (survivant.lat and survivant.long):
+        manquants.append("coordonnées")
+    if absorbe.code and not survivant.code:
+        manquants.append("code")
+    if absorbe.a_parent and not survivant.a_parent:
+        manquants.append("rattachement")
+    return ", ".join(manquants)
