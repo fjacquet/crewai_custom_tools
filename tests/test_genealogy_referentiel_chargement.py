@@ -48,12 +48,29 @@ def test_un_pays_en_echec_est_signale_et_ne_leve_pas(monkeypatch):
 
 
 def test_temporisation_avant_chaque_appel(monkeypatch):
+    """Le limiteur est posé avant CHAQUE tentative, pas seulement la première.
+
+    Combine le scénario `flaky` des reprises (deux échecs puis un succès) : si l'appel au
+    limiteur était sorti de la boucle de reprise, un seul appel suffirait quel que soit le
+    nombre de tentatives et ce test ne le verrait pas. D'où l'assertion sur le COMPTE des
+    appels au limiteur, aligné sur `appels["n"]`, et pas seulement sur son contenu.
+    """
     acquis = []
-    monkeypatch.setattr(chargement, "sparql_rows", lambda q, timeout=0: [])
+    appels = {"n": 0}
+
+    def flaky(query, timeout=0):
+        appels["n"] += 1
+        if appels["n"] < 3:
+            raise chargement.RequestException("502 Bad Gateway")
+        return []
+
+    monkeypatch.setattr(chargement, "sparql_rows", flaky)
+    monkeypatch.setattr(chargement.time, "sleep", lambda s: None)
     monkeypatch.setattr(chargement, "get_rate_limiter",
                         lambda: type("L", (), {"acquire": lambda self, p: acquis.append(p)})())
-    chargement.charger_pays(CH)
-    assert acquis == ["Wikidata"]
+    chargement.charger_pays(CH, essais=3, pause=0.0)
+    assert appels["n"] == 3
+    assert acquis == ["Wikidata"] * 3
 
 
 def test_charger_entites_pays(monkeypatch):

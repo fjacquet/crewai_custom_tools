@@ -49,13 +49,14 @@ class EntitePays(BaseModel):
 def _interroger(query: str, essais: int, pause: float) -> list[dict]:
     """Appel temporisé, avec reprises à attente croissante. Relève la dernière erreur."""
     derniere: Exception | None = None
-    for tentative in range(essais):
+    bornes = max(1, essais)  # `essais=0` (ou négatif) doit quand même essayer une fois
+    for tentative in range(bornes):
         try:
             get_rate_limiter().acquire(_PROVIDER)
             return sparql_rows(query, timeout=_TIMEOUT)
         except RequestException as exc:
             derniere = exc
-            if tentative < essais - 1:
+            if tentative < bornes - 1:
                 time.sleep(pause * (tentative + 1))
     raise derniere if derniere else RuntimeError("échec sans exception")
 
