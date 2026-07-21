@@ -16,9 +16,23 @@ def test_apostrophe_typographique_equivaut_a_l_ascii():
 
 
 def test_ligature_oe_equivaut_a_oe():
-    """NFD décompose les accents, pas les ligatures : Vœuil-et-Giget est une commune réelle."""
+    """NFD décompose les accents, pas les ligatures. Vœuil-et-Giget (Charente) et
+    Œuilly (Aisne) sont des communes réelles ; Ænes est un hameau norvégien réel —
+    la ligature en minuscule (œ) et en majuscule (Œ, Æ) doit converger avec sa forme
+    dépliée (« oe », « OE », « ae », « AE »)."""
     assert normaliser_nom_lieu("Vœuil-et-Giget") == normaliser_nom_lieu("Voeuil-et-Giget")
-    assert normaliser_nom_lieu("Æbelø") == normaliser_nom_lieu("Aebelo")
+    assert normaliser_nom_lieu("Œuilly") == normaliser_nom_lieu("Oeuilly")
+    assert normaliser_nom_lieu("Ænes") == normaliser_nom_lieu("Aenes")
+
+
+def test_lettre_barree_ne_converge_pas_avec_sa_transliteration():
+    """La table _LIGATURES couvre les ligatures (œ, æ), pas les lettres barrées.
+    ø/Ø est une lettre scandinave à part entière, qu'Unicode ne décompose pas et
+    qui n'est ni un accent ni une ligature composée. La transformer en "o" serait
+    un choix arbitraire : rien ne justifierait alors d'ignorer le ł polonais ou le
+    đ croate. Décision délibérée : les lettres barrées restent hors du périmètre
+    de cette table, et Tønder ne doit pas s'y confondre avec Tonder."""
+    assert normaliser_nom_lieu("Tønder") != normaliser_nom_lieu("Tonder")
 
 
 def test_l_apostrophe_reste_un_separateur_et_ne_disparait_pas():
