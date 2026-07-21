@@ -196,8 +196,10 @@ _PAIRES_SYMETRIE = [
      _lieu("P2", place_type="Municipality", lat="47.1147", long="5.0")),
     (_lieu("P1", place_type="Unknown", lat="47.08", long="2.39"),
      _lieu("P2", place_type="", lat="47.08", long="2.39")),
-    (_lieu("P1", code=" ", place_type="Municipality"),
-     _lieu("P2", code="18033", place_type="Municipality")),
+    # Coordonnées présentes à dessein : c'est la seule configuration où un côté
+    # trancherait sur son propre code pendant que l'autre conclurait par la position.
+    (_lieu("P1", code=" ", place_type="Municipality", lat="47.08", long="2.39"),
+     _lieu("P2", code="18033", place_type="Municipality", lat="47.08", long="2.39")),
 ]
 
 
