@@ -4,16 +4,20 @@
 Les fixtures viennent de `scripts/capturer_charges_referentiel.py`. Tout QID désignant une
 entité réelle a été vérifié en ligne le 2026-07-22 — libellé ET code `P300` relus via
 `wbgetentities`, jamais de mémoire. Une version antérieure de ces tests portait des QID
-inventés et n'a pas vu que la France entière tombait. Seuls les tests de cycle et d'orpheline
-emploient des identifiants délibérément fictifs (`Q1`, `Q2`, `Q888888`, `Q999999`) : ils ne
-désignent personne, et c'est exactement ce qu'ils éprouvent.
+inventés et n'a pas vu que la France entière tombait. Seuls les tests de **topologie pure** —
+cycle, orpheline, chaîne de quatre — emploient des identifiants délibérément fictifs (`Q1` à
+`Q4`, `Q888888`, `Q999999`, et le pays `Q0`) : ils ne désignent personne, et c'est exactement
+ce qu'ils éprouvent.
 """
 import json
 import pathlib
 
 import pytest
 
-from crewai_custom_tools.tools.genealogy.referentiel.config import PAYS_REFERENTIEL
+from crewai_custom_tools.tools.genealogy.referentiel.config import (
+    PAYS_REFERENTIEL,
+    PaysReferentiel,
+)
 from crewai_custom_tools.tools.genealogy.referentiel.wikidata import map_subdivisions
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "referentiel"
@@ -103,9 +107,13 @@ def test_toute_entite_est_retenue_ecartee_ou_en_collision(code):
 
 @pytest.mark.parametrize("code", ["FR", "IT"])
 def test_le_resultat_ne_depend_pas_de_lordre_des_lignes(code):
-    """SPARQL ne garantit pas l'ordre. Les TROIS listes doivent être identiques d'une
-    permutation à l'autre, écartées comprises : c'est là que se verrait une propriété
-    multivaluée — deux P625 sur la même entité — retenue selon l'ordre d'arrivée."""
+    """SPARQL ne garantit pas l'ordre : les TROIS listes doivent être identiques d'une
+    permutation à l'autre, écartées comprises.
+
+    Ce test couvre l'ordre des listes et le départage des parents, PAS le choix d'une valeur
+    scalaire multivaluée : la seule entité concernée des quatre charges est Kielce, qui est
+    écartée, et une `EntiteEcartee` ne porte pas de coordonnée. C'est
+    `test_deux_coordonnees_sur_une_entite_retenue...` qui éprouve ce point-là."""
     import random
 
     rows = charge(code)
@@ -138,7 +146,8 @@ def test_charge_vide():
 
 
 def test_un_cycle_de_rattachement_ecarte_les_deux_entites():
-    """A parent de B, B parent de A : sans garde, la récursion ne terminerait pas."""
+    """A parent de B, B parent de A. Le point fixe laisse à l'infini tout sommet qu'aucune
+    ancre n'atteint : un cycle ne se relâche jamais, il ne bloque rien non plus."""
     rows = [ligne("Q1", "A", "FR-01", parent="Q2"),
             ligne("Q2", "B", "FR-02", parent="Q1")]
     subs, _, ecartees = map_subdivisions(rows, PAYS_REFERENTIEL["FR"])
@@ -200,6 +209,48 @@ def test_les_noms_ne_repetent_pas_un_libelle_identique():
     rows = [ligne("Q12771", "Vaud", "CH-VD", parent="Q39", nom_local="Vaud", ancre=True)]
     subs, _, _ = map_subdivisions(rows, PAYS_REFERENTIEL["CH"])
     assert subs[0].noms == ["Vaud"]
+
+
+def test_deux_coordonnees_sur_une_entite_retenue_sont_departagees_de_facon_stable():
+    """`P625` n'est pas plus monovalué que `P131` : `Q102317` Kielce en porte deux dans la
+    charge polonaise. La coordonnée écrite ne doit pas dépendre de l'ordre des lignes.
+
+    Il faut une entité RETENUE pour l'éprouver — sur une écartée, comme l'est justement
+    Kielce, la coordonnée n'apparaît nulle part et le défaut reste invisible.
+    """
+    def rows(premiere, seconde):
+        return [ligne("Q980", "Bavière", "DE-BY", parent="Q183", coord=premiere, ancre=True),
+                ligne("Q980", "Bavière", "DE-BY", parent="Q183", coord=seconde, ancre=True)]
+
+    # Deux relevés plausibles de la même entité, comme Wikidata en porte pour Kielce.
+    nord, sud = "Point(11.5 49.0)", "Point(11.4 48.1)"
+    (dans_un_ordre,), _, _ = map_subdivisions(rows(nord, sud), PAYS_REFERENTIEL["DE"])
+    (dans_lautre,), _, _ = map_subdivisions(rows(sud, nord), PAYS_REFERENTIEL["DE"])
+    assert (dans_un_ordre.lat, dans_un_ordre.long) == (dans_lautre.lat, dans_lautre.long)
+    assert (dans_un_ordre.lat, dans_un_ordre.long) in {("49.0", "11.5"), ("48.1", "11.4")}
+
+
+def test_une_chaine_de_quatre_se_propage_jusquau_bout():
+    """Le relâchement doit converger, pas s'arrêter à la première passe.
+
+    Les lignes sont insérées du plus profond vers l'ancre : c'est l'ordre défavorable, celui
+    où une seule passe ne propage qu'un niveau et laisse les deux derniers à l'infini — donc
+    faussement écartés. Aucune charge réelle ne l'éprouve, toutes tenant en deux niveaux.
+
+    Le pays est construit ici, et non ajouté à `PAYS_REFERENTIEL` : aucun pays du référentiel
+    n'a quatre niveaux, et la configuration de production n'a pas à porter un cas d'essai.
+    """
+    fictif = PaysReferentiel(code_iso="XX", qid="Q0", nom="Essai", langue="fr",
+                             niveaux=("Region", "Province", "Department", "City"))
+    rows = [ligne("Q4", "D", "XX-04", parent="Q3"),
+            ligne("Q3", "C", "XX-03", parent="Q2"),
+            ligne("Q2", "B", "XX-02", parent="Q1"),
+            ligne("Q1", "A", "XX-01", parent="Q0", ancre=True)]
+    subs, _, ecartees = map_subdivisions(rows, fictif)
+    assert ecartees == []
+    assert {s.iso: s.niveau for s in subs} == {"XX-01": 1, "XX-02": 2, "XX-03": 3, "XX-04": 4}
+    assert {s.iso: s.parent_qid for s in subs} == {
+        "XX-01": "Q0", "XX-02": "Q1", "XX-03": "Q2", "XX-04": "Q3"}
 
 
 def test_une_entite_sans_parent_ni_ancre_est_ecartee_avec_son_motif():

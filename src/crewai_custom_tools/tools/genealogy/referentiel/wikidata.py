@@ -92,6 +92,14 @@ def _plus_petite(actuelle: str | None, proposee: str | None) -> str | None:
     distinctes. Prendre la première rendrait la sortie dépendante de l'ordre des lignes, que
     SPARQL ne garantit pas. L'ordre lexicographique n'a pas de sens géographique — il n'est
     là que pour être stable, et le choix reste arbitraire par nature.
+
+    **Ce que ce départage perd, et pourquoi c'est toléré** : appliqué à `iso`, il fait
+    disparaître sans trace le second code d'une entité qui en porte deux du même préfixe.
+    Le cas existe — `Q1142` Alsace porte `FR-A` *et* `FR-6AE` — mais il est hors des charges
+    actuelles, filtré par `P576`. La partition garantie par `map_subdivisions` porte sur les
+    **QID**, pas sur les codes : l'entité ressort toujours dans l'une des trois listes, seul
+    son code surnuméraire est muet. Le référentiel écrit un lieu par entité et non un par
+    code ; porter les deux demanderait un modèle à codes multiples, hors sujet ici.
     """
     if proposee is None:
         return actuelle
