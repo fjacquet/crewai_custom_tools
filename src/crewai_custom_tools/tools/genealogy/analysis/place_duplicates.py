@@ -111,8 +111,17 @@ def evaluer_preuve(a: PlaceFacts, b: PlaceFacts) -> str:
 
 
 def richesse(p: PlaceFacts) -> int:
-    """Nombre d'attributs renseignés parmi coordonnées, code, parent (0 à 3). Pur."""
-    return sum((bool(p.lat and p.long), bool(p.code), bool(p.a_parent)))
+    """Nombre d'attributs renseignés parmi coordonnées, code, parent (0 à 3). Pur.
+
+    Passe par `_renseigne` comme `evaluer_preuve` : un champ qui ne contient que
+    des blancs ne compte pas comme renseigné, sans quoi un lieu « vidé » en tapant
+    une espace afficherait une richesse qu'il n'a pas.
+    """
+    return sum((
+        bool(_renseigne(p.lat) and _renseigne(p.long)),
+        bool(_renseigne(p.code)),
+        bool(p.a_parent),
+    ))
 
 
 def choisir_survivant(lieux: list[PlaceFacts]) -> PlaceFacts:
@@ -136,9 +145,11 @@ def perte_evitee(survivant: PlaceFacts, absorbe: PlaceFacts) -> str:
     est une règle qu'on croit sur parole.
     """
     manquants = []
-    if (absorbe.lat and absorbe.long) and not (survivant.lat and survivant.long):
+    if (_renseigne(absorbe.lat) and _renseigne(absorbe.long)) and not (
+        _renseigne(survivant.lat) and _renseigne(survivant.long)
+    ):
         manquants.append("coordonnées")
-    if absorbe.code and not survivant.code:
+    if _renseigne(absorbe.code) and not _renseigne(survivant.code):
         manquants.append("code")
     if absorbe.a_parent and not survivant.a_parent:
         manquants.append("rattachement")
