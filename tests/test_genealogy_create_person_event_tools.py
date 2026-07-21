@@ -114,6 +114,28 @@ def test_create_event_without_place_or_citation_omits_them(mocker):
     assert "citation_list" not in ev      # pas de citation : pas de clé
 
 
+def test_create_event_attach_failure_after_post_surfaces_orphan_handle(mocker):
+    # Non-atomique : le POST événement réussit, puis le PUT personne échoue (500).
+    # L'événement EXISTE — l'outil ne doit pas mentir en « refusé » ni perdre le
+    # handle : il rend un succès qualifié attached=False avec le handle de l'orphelin.
+    def h(request):
+        if request.method == "POST" and request.url.path == "/api/events/":
+            return httpx.Response(201, json=[{"handle": "E_ORPH"}])
+        if request.method == "GET" and request.url.path == "/api/people/H":
+            return httpx.Response(200, json=dict(_PERSON_SANS_DECES))
+        if request.method == "PUT" and request.url.path == "/api/people/H":
+            return httpx.Response(500, json={"error": "boom"})
+        return httpx.Response(404)
+    mocker.patch.object(write_tools, "get_client", return_value=_client(h))
+    data = json.loads(GrampsCreateEventTool()._run(
+        person_handle="H", event_type="Death", dateval=[10, 12, 1894]))
+    assert data["success"] is True
+    assert data["data"]["created"] is True
+    assert data["data"]["attached"] is False
+    assert data["data"]["handle"] == "E_ORPH"      # l'orphelin reste retrouvable
+    assert "attach_error" in data["data"]
+
+
 def test_create_event_dryrun_place_handle_is_not_written(mocker):
     # Un place_handle synthétique 'DRYRUN:...' (lieu simulé en amont) ne doit jamais
     # entrer dans le payload d'un événement écrit pour de vrai.

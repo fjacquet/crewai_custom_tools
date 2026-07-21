@@ -9,6 +9,7 @@ import logging
 import os
 import uuid
 
+import httpx
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -824,19 +825,29 @@ class GrampsCreateEventTool(BaseTool):
         data = resp.json() if resp.content else None
         event_handle = _created_handle(data) or gen_handle
 
-        # À partir d'ici l'événement EXISTE. On le rattache à la personne en append-only :
-        # on repart de l'objet complet, on n'ajoute qu'un EventRef, et on ne pose l'index
-        # vital que s'il était absent.
-        person = client.get_object("people", person_handle)
-        refs = list(person.get("event_ref_list") or [])
-        new_index = len(refs)
-        refs.append({"_class": "EventRef", "ref": event_handle, "role": role})
-        updated = dict(person)
-        updated["event_ref_list"] = refs
-        if event_type == "Death" and person.get("death_ref_index", -1) < 0:
-            updated["death_ref_index"] = new_index
-        if event_type == "Birth" and person.get("birth_ref_index", -1) < 0:
-            updated["birth_ref_index"] = new_index
-        client.request("PUT", f"/people/{person_handle}", json=updated)
+        # À partir d'ici l'événement EXISTE. Le rattacher à la personne est un SECOND
+        # write, non transactionnel : s'il échoue (réseau, 5xx), l'événement reste
+        # créé mais NON rattaché — un orphelin. On ne laisse PAS `@api_tool` avaler cet
+        # échec en un `err` indistinct qui perdrait le handle et masquerait la création
+        # réussie en « refusée ». On rend un succès QUALIFIÉ : `attached: False` + le
+        # handle de l'orphelin, seule prise pour le retrouver. Append-only : on repart
+        # de l'objet complet, on n'ajoute qu'un EventRef, et on ne pose l'index vital
+        # que s'il était absent.
+        try:
+            person = client.get_object("people", person_handle)
+            refs = list(person.get("event_ref_list") or [])
+            new_index = len(refs)
+            refs.append({"_class": "EventRef", "ref": event_handle, "role": role})
+            updated = dict(person)
+            updated["event_ref_list"] = refs
+            if event_type == "Death" and person.get("death_ref_index", -1) < 0:
+                updated["death_ref_index"] = new_index
+            if event_type == "Birth" and person.get("birth_ref_index", -1) < 0:
+                updated["birth_ref_index"] = new_index
+            client.request("PUT", f"/people/{person_handle}", json=updated)
+        except httpx.HTTPStatusError as exc:
+            return ok({"handle": event_handle, "person_handle": person_handle,
+                       "created": True, "attached": False, "dry_run": False,
+                       "attach_error": str(exc)})
         return ok({"handle": event_handle, "person_handle": person_handle,
                    "created": True, "attached": True, "dry_run": False})
