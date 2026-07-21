@@ -145,3 +145,13 @@ def test_un_suffixe_a_deux_lettres_hors_table_reste_non_suisse():
 
     parsed = parse_pname("Springfield (NY)")
     assert parsed.country != "Suisse"
+
+
+def test_un_nom_a_virgule_finale_tronquee_ne_declenche_pas_la_regle_cantonale():
+    """Sans la garde `len(segments) == 1`, `Springfield (BE),` — artefact d'un titre tronqué —
+    passerait pour suisse : le pays reste vide après le repli, et le suffixe `(BE)` suffirait
+    à lui seul à déclencher la règle."""
+    from crewai_custom_tools.tools.genealogy.standardize.places import parse_pname
+
+    parsed = parse_pname("Springfield (BE),")
+    assert parsed.country != "Suisse"
