@@ -6,6 +6,7 @@ from crewai_custom_tools.tools.genealogy.analysis.place_duplicates import (
     PREUVE_CODE,
     PREUVE_COORDONNEES,
     choisir_survivant,
+    etager_lieux,
     evaluer_preuve,
     normaliser_nom_lieu,
     perte_evitee,
@@ -381,3 +382,154 @@ def test_perte_evitee_signale_le_rattachement_manquant():
     survivant = _lieu("P1", lat="47.1", long="2.3", code="18044", a_parent=False)
     absorbe = _lieu("P2", lat="47.1", long="2.3", code="18044", a_parent=True)
     assert perte_evitee(survivant, absorbe) == "rattachement"
+
+
+def _commune(gid, nom, **kw):
+    base = {"gramps_id": gid, "handle": "H" + gid, "nom": nom,
+            "place_type": "Municipality"}
+    base.update(kw)
+    return PlaceFacts(**base)
+
+
+def test_un_lieu_unique_ne_produit_rien():
+    assert etager_lieux([_commune("P1", "Vierzon", code="18279")]) == []
+
+
+def test_deux_communes_meme_code_donnent_une_proposition_auto():
+    props = etager_lieux([
+        _commune("P0064", "Cerbois", code="18044", lat="47.1", long="2.3", retroliens=53),
+        _commune("P0070", "Cerbois", code="18044", lat="47.1", long="2.3", retroliens=4),
+    ])
+    assert len(props) == 1
+    p = props[0]
+    assert p.verdict == "auto"
+    assert (p.gramps_id_keep, p.gramps_id_merge) == ("P0064", "P0070")
+    assert p.canonical == "Cerbois"
+    assert "code" in p.reason
+
+
+def test_noms_differents_ne_sont_pas_candidats():
+    props = etager_lieux([
+        _commune("P1", "Bourges", code="18033"),
+        _commune("P2", "Vierzon", code="18279"),
+    ])
+    assert props == []
+
+
+def test_types_differents_sans_code_partagent_le_nom_mais_partent_en_arbitrage():
+    """Annaba : Department sans code contre Wilaya code 23."""
+    props = etager_lieux([
+        PlaceFacts(gramps_id="P0343", handle="HA", nom="Annaba", place_type="Department"),
+        PlaceFacts(gramps_id="P0383", handle="HB", nom="Annaba", place_type="Wilaya",
+                   code="23"),
+    ])
+    assert len(props) == 1
+    assert props[0].verdict == "arbitrage"
+
+
+def test_paris_part_en_arbitrage_et_jamais_en_auto():
+    """Le cas qui doit rester rouge si le veto disparaît."""
+    props = etager_lieux([
+        PlaceFacts(gramps_id="P0301", handle="HA", nom="Paris", place_type="Department",
+                   code="75", lat="48.8589", long="2.347"),
+        PlaceFacts(gramps_id="P0008", handle="HB", nom="Paris", place_type="Municipality",
+                   code="75056", lat="48.8589", long="2.347"),
+    ])
+    assert len(props) == 1
+    assert props[0].verdict == "arbitrage"
+
+
+def test_grappe_de_trois_produit_deux_propositions_sur_le_meme_survivant():
+    """Verrens-Arvey : l'égalité de nom est transitive, une seule passe suffit."""
+    props = etager_lieux([
+        _commune("P0178", "Verrens-Arvey", code="73312", lat="45.6", long="6.4", retroliens=4),
+        _commune("P0192", "Verrens-Arvey", code="73312", lat="45.6", long="6.4", retroliens=19),
+        _commune("P0198", "Verrens-Arvey", code="73312", lat="45.6", long="6.4", retroliens=5),
+    ])
+    assert len(props) == 2
+    assert {p.gramps_id_keep for p in props} == {"P0192"}
+    assert {p.gramps_id_merge for p in props} == {"P0178", "P0198"}
+    assert all(p.verdict == "auto" for p in props)
+
+
+def test_la_perte_evitee_est_rapportee():
+    props = etager_lieux([
+        _commune("P0387", "Apremont-la-Forêt", retroliens=50),
+        _commune("P0148", "Apremont-la-Forêt", code="55012", lat="48.8", long="5.6",
+                 retroliens=1),
+    ])
+    assert props[0].gramps_id_keep == "P0148"
+    assert "coordonnées" in props[0].perte_evitee
+
+
+def test_lieu_sans_nom_est_ignore():
+    props = etager_lieux([
+        _commune("P1", "", code="18044"),
+        _commune("P2", "", code="18044"),
+    ])
+    assert props == []
+
+
+def test_etage_lieux_liste_vide_ne_produit_rien():
+    assert etager_lieux([]) == []
+
+
+def test_etage_lieux_regroupe_les_variantes_de_casse_et_d_accents():
+    """Le regroupement se fait sur le nom NORMALISÉ : deux orthographes de la
+    même commune (casse, séparateurs) doivent finir dans le même groupe, pas
+    seulement `normaliser_nom_lieu` en isolation."""
+    props = etager_lieux([
+        _commune("P1", "Saint-Palais", code="18205"),
+        _commune("P2", "SAINT PALAIS", code="18205"),
+    ])
+    assert len(props) == 1
+    assert props[0].gramps_id_keep == "P1"
+    assert props[0].canonical == "Saint-Palais"
+
+
+def test_etage_lieux_canonical_est_le_nom_exact_du_survivant():
+    """`canonical` doit reprendre l'orthographe RÉELLE du survivant choisi par
+    richesse, pas une casse arbitraire ni la clé normalisée."""
+    props = etager_lieux([
+        _commune("P9", "cerbois", code="18044"),
+        _commune("P1", "Cerbois", code="18044", lat="47.1", long="2.3"),
+    ])
+    assert props[0].gramps_id_keep == "P1"
+    assert props[0].canonical == "Cerbois"
+
+
+def test_etage_lieux_reason_arbitrage_mentionne_la_relecture_humaine():
+    props = etager_lieux([
+        PlaceFacts(gramps_id="P0343", handle="HA", nom="Annaba", place_type="Department"),
+        PlaceFacts(gramps_id="P0383", handle="HB", nom="Annaba", place_type="Wilaya",
+                   code="23"),
+    ])
+    assert "relecture humaine" in props[0].reason
+
+
+def test_etage_lieux_verdicts_mixtes_dans_une_meme_grappe():
+    """Un survivant peut prouver sa fusion avec un absorbé (code commun) tout en
+    n'en prouvant aucune avec un autre (code différent, veto) — les deux
+    propositions du même groupe portent alors des verdicts différents. Rien
+    dans le brief ne verrouillait ce mélange (la grappe de trois testée
+    n'exerçait que le cas 'tout auto')."""
+    props = etager_lieux([
+        _commune("S", "Groupe", code="18044", lat="47.1", long="2.3", retroliens=100),
+        _commune("B", "Groupe", code="18044", retroliens=5),
+        _commune("C", "Groupe", code="99999", retroliens=1),
+    ])
+    assert len(props) == 2
+    verdicts = {p.gramps_id_merge: p.verdict for p in props}
+    assert verdicts == {"B": "auto", "C": "arbitrage"}
+
+
+def test_etage_lieux_ordonne_les_groupes_par_nom_normalise():
+    """Deux groupes indépendants doivent sortir dans un ordre déterministe
+    (alphabétique sur la clé normalisée), pas dans l'ordre d'arrivée des lieux."""
+    props = etager_lieux([
+        _commune("P1", "Vierzon", code="18279"),
+        _commune("P2", "Vierzon", code="18279"),
+        _commune("P3", "Bourges", code="18033"),
+        _commune("P4", "Bourges", code="18033"),
+    ])
+    assert [p.canonical for p in props] == ["Bourges", "Vierzon"]

@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections import defaultdict
 
-from crewai_custom_tools.tools.genealogy.models.domain import PlaceFacts
+from crewai_custom_tools.tools.genealogy.models.domain import (
+    PlaceFacts, PlaceMergeProposition,
+)
 
 __all__ = [
-    "choisir_survivant", "evaluer_preuve", "normaliser_nom_lieu",
-    "perte_evitee", "richesse",
+    "choisir_survivant", "etager_lieux", "evaluer_preuve",
+    "normaliser_nom_lieu", "perte_evitee", "richesse",
 ]
 
 # Les ligatures ne sont pas des accents : NFD ne les décompose pas. « Vœuil-et-Giget »
@@ -154,3 +157,52 @@ def perte_evitee(survivant: PlaceFacts, absorbe: PlaceFacts) -> str:
     if absorbe.a_parent and not survivant.a_parent:
         manquants.append("rattachement")
     return ", ".join(manquants)
+
+
+_MOTIFS = {
+    PREUVE_CODE: "code officiel identique",
+    PREUVE_COORDONNEES: "coordonnées identiques, même type, aucun code",
+}
+
+
+def etager_lieux(lieux: list[PlaceFacts]) -> list[PlaceMergeProposition]:
+    """Groupe les homonymes, choisit un survivant par groupe, évalue chaque autre. Pur.
+
+    Le groupement se fait sur l'ÉGALITÉ de nom normalisé, qui est une relation
+    d'équivalence : les groupes sont donc complets dès la première lecture, et
+    fusionner deux lieux n'en renomme aucun autre. C'est ce qui rend inutile la
+    boucle de convergence que la déduplication des personnes exige — voir l'écart
+    documenté en tête du plan.
+    """
+    groupes: dict[str, list[PlaceFacts]] = defaultdict(list)
+    for lieu in lieux:
+        cle = normaliser_nom_lieu(lieu.nom)
+        if cle:                                  # un lieu sans nom exploitable n'est pas candidat
+            groupes[cle].append(lieu)
+
+    propositions: list[PlaceMergeProposition] = []
+    for _, membres in sorted(groupes.items()):
+        if len(membres) < 2:
+            continue
+        survivant = choisir_survivant(membres)
+        for absorbe in sorted(membres, key=lambda p: p.gramps_id):
+            if absorbe.handle == survivant.handle:
+                continue
+            preuve = evaluer_preuve(survivant, absorbe)
+            propositions.append(PlaceMergeProposition(
+                gramps_id_keep=survivant.gramps_id, handle_keep=survivant.handle,
+                gramps_id_merge=absorbe.gramps_id, handle_merge=absorbe.handle,
+                canonical=survivant.nom,
+                reason=(f"homonymes — {_MOTIFS[preuve]}" if preuve
+                        else "homonymes — aucune preuve : relecture humaine"),
+                verdict="auto" if preuve else "arbitrage",
+                # Ordre (absorbe, survivant) à dessein, PAS (survivant, absorbe) :
+                # perte_evitee(a, b) rapporte les champs présents chez « b » et
+                # absents chez « a ». Le rapport doit nommer ce que le survivant
+                # apportait de plus que l'absorbé — la perte qu'on a évitée en le
+                # choisissant lui plutôt que l'autre — donc absorbe en premier
+                # (« a »), survivant en second (« b »). Inverser rapporterait
+                # l'inverse de ce qui va réellement être détruit ; voir
+                # test_la_perte_evitee_est_rapportee (Apremont-la-Forêt).
+                perte_evitee=perte_evitee(absorbe, survivant)))
+    return propositions
