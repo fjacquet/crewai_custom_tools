@@ -586,6 +586,37 @@ def test_un_veto_entre_deux_absorbes_bloque_toute_la_grappe():
     assert "relecture humaine" in contamine.reason
 
 
+def test_un_veto_qui_n_implique_pas_le_survivant_bloque_quand_meme_la_grappe():
+    """C2, cas strict : la paire vetoée ne touche PAS le survivant.
+
+    Dans le scénario ci-dessus, le survivant est lui-même membre de la paire
+    vetoée — un balayage qui ne comparerait que « survivant contre chaque
+    autre » y suffirait encore. Ici non : le survivant P0001 n'a aucun code, donc
+    il n'oppose de veto à personne ; le veto est entièrement contenu entre deux
+    ABSORBÉS, P0010 (18033) et P0011 (18034). C'est le trou exact que la lecture
+    par paires du survivant laisse ouvert, et P0012 — sans code, coordonnées et
+    rattachement identiques à ceux du survivant, donc sans perte à signaler —
+    est le membre qui passerait en fusion automatique irréversible.
+
+    Les quatre lieux ont une richesse de 2, si bien que ce sont les rétroliens
+    qui désignent P0001 : le survivant est délibérément le seul à ne rien porter
+    qui puisse déclencher la garde C1.
+    """
+    props = etager_lieux([
+        _commune("P0001", "Bourges", lat="47.08", long="2.39", a_parent=True, retroliens=50),
+        _commune("P0010", "Bourges", code="18033", lat="47.08", long="2.39", retroliens=10),
+        _commune("P0011", "Bourges", code="18034", lat="47.08", long="2.39", retroliens=9),
+        _commune("P0012", "Bourges", lat="47.08", long="2.39", a_parent=True, retroliens=5),
+    ])
+    assert len(props) == 3
+    assert {p.gramps_id_keep for p in props} == {"P0001"}
+    contamine = next(p for p in props if p.gramps_id_merge == "P0012")
+    assert contamine.perte_evitee == ""            # rien ne distingue ces deux-là
+    assert contamine.verdict == "arbitrage"
+    assert "grappe" in contamine.reason
+    assert all(p.verdict == "arbitrage" for p in props)
+
+
 def test_une_grappe_saine_fusionne_toujours_automatiquement():
     """La porte reste ouverte : ni veto ni perte, donc les trois fusionnent seules.
 
