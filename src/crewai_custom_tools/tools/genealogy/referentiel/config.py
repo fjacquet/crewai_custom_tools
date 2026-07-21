@@ -3,9 +3,9 @@
 Ajouter un pays = ajouter une ligne. Les QID ont été vérifiés en ligne le 2026-07-21 ;
 ne pas les modifier sans revérifier contre les libellés Wikidata.
 
-Les types sont exclusivement des types Gramps NATIFS : ni `Canton` ni `Wilaya` n'en sont,
-et chaque type personnalisé est une ligne de plus à ne pas oublier dans les filtres par
-type (cf. la mise en garde TYPES_LIEU_DECES du CLAUDE.md).
+Les types sont exclusivement des types Gramps NATIFS : ni `Canton` ni `Wilaya` n'en sont.
+Un type personnalisé est une ligne de plus à ne pas oublier dans chaque filtre par type,
+et un contenant oublié dans une liste d'inclusion se traduit par un rattachement muet.
 """
 
 from __future__ import annotations
