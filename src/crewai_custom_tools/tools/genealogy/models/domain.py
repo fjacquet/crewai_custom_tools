@@ -190,7 +190,13 @@ class PlaceFacts(BaseModel):
 
 
 class PlaceMergeProposition(BaseModel):
-    """Two existing leaf places resolving to the same canonical place (dedup). Never auto."""
+    """Deux lieux homonymes candidats à la fusion (déduplication).
+
+    C'est `verdict` qui décide du sort : `"auto"` — la preuve est canonique, la fusion
+    s'exécute sans relecture, donc irréversiblement — ou `"arbitrage"` — la paire part en
+    YAML pour qu'un humain tranche. La mention « jamais automatique » qui figurait ici
+    datait d'avant l'ADR 0015, lequel a précisément ouvert la fusion automatique sur preuve.
+    """
 
     gramps_id_keep: str
     handle_keep: str
