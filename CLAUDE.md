@@ -21,7 +21,9 @@ uv run pytest tests/test_osint_tools.py::test_github_search_success   # Single t
 # CI can use `python -m pytest -v` because it installs with `uv pip install --system`.
 
 uv run crewai-custom-tools-mcp         # Launch the FastMCP stdio server
-mkdocs build                           # Build docs site into site/ (also mkdocs serve)
+mkdocs build --strict                  # Build docs site into site/ (also mkdocs serve)
+                                       # CI uses --strict: a file under docs/ that is missing
+                                       # from the mkdocs.yml nav fails the build.
 python scripts/generate_sbom.py        # Regenerate sbom.json
 uv run python scripts/extract_changelog.py vX.Y.Z   # Corps de la release d'un tag (--titre pour le titre)
 ```
