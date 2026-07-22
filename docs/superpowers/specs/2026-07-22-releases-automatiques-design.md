@@ -182,7 +182,13 @@ le contenu des sections est identique, seul le heading change.
 gagne une contrainte :
 
 > bump `__version__` **et** `version` → entrée CHANGELOG, **descriptif dans le heading** →
-> `git tag -a vX.Y.Z` → `git push --tags`. La Release se crée toute seule.
+> `git tag -a vX.Y.Z` → `git push origin main --follow-tags`. La Release se crée toute seule.
+
+`--follow-tags` et non `--tags` : ce dernier pousse le tag **seul**, sans la branche, et le
+workflow publierait alors une release pour un commit qui n'est sur aucune branche. Il emporte de
+surcroît tout tag local `v*` oublié. La documentation décrit aussi la reprise après échec, le
+workflow étant conçu pour rougir sur trois cas — section absente ou vide, version discordante,
+release déjà existante.
 
 Pas d'ADR. La décision porte sur le processus de publication, pas sur l'architecture du paquet, du
 serveur MCP, de l'authentification ni du déploiement — les quatre domaines que couvrent les ADR
