@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`crewai-custom-tools` is a **Universal Monolith** Python package (Python ≥3.11) that centralizes **119 Pydantic-validated tools** for CrewAI multi-agent systems — ported from three source repos (`finwiz`, `osint_tools`, `epic_news`) — into a single, zero-config installable library. Tools cover six domains: Web Search/Scraping, Finance/Markets, OSINT recon, Report/PDF compilation, Enterprise integrations, and Files. Every tool returns a uniform `ToolResult` JSON envelope, and all tools are exposed over MCP via a FastMCP stdio server (full parity, auto-registered).
+`crewai-custom-tools` is a **Universal Monolith** Python package (Python ≥3.12) that centralizes **119 Pydantic-validated tools** for CrewAI multi-agent systems — ported from three source repos (`finwiz`, `osint_tools`, `epic_news`) — into a single, zero-config installable library. Tools cover six domains: Web Search/Scraping, Finance/Markets, OSINT recon, Report/PDF compilation, Enterprise integrations, and Files. Every tool returns a uniform `ToolResult` JSON envelope, and all tools are exposed over MCP via a FastMCP stdio server (full parity, auto-registered).
 
 ## Commands
 
@@ -21,12 +21,14 @@ uv run pytest tests/test_osint_tools.py::test_github_search_success   # Single t
 # CI can use `python -m pytest -v` because it installs with `uv pip install --system`.
 
 uv run crewai-custom-tools-mcp         # Launch the FastMCP stdio server
-mkdocs build                           # Build docs site into site/ (also mkdocs serve)
+mkdocs build --strict                  # Build docs site into site/ (also mkdocs serve)
+                                       # CI uses --strict: a file under docs/ that is missing
+                                       # from the mkdocs.yml nav fails the build.
 python scripts/generate_sbom.py        # Regenerate sbom.json
 uv run python scripts/extract_changelog.py vX.Y.Z   # Corps de la release d'un tag (--titre pour le titre)
 ```
 
-CI (`.github/workflows/ci.yml`) runs `python -m pytest -v` on every push/PR to `main` **and on every `v*` tag push** — the tag trigger exists so a tagged commit is actually verified; `release.yml` publishes in parallel and does not wait for it. The matrix is Python **3.12 and 3.13 only**, while `requires-python` claims `>=3.11`: 3.11 is supported on paper and untested in CI. Docs deploy to GitHub Pages on push to `main`.
+CI (`.github/workflows/ci.yml`) runs `python -m pytest -v` on every push/PR to `main` **and on every `v*` tag push** — the tag trigger exists so a tagged commit is actually verified; `release.yml` publishes in parallel and does not wait for it. The matrix is Python **3.12 and 3.13**, matching `requires-python = ">=3.12"` — 3.11 is **not** supported; adding it to the matrix fails at install with `does not satisfy Python>=3.12`. `fail-fast: false` on the matrix, so one version's failure doesn't cancel the others and mask which one actually broke. Docs deploy to GitHub Pages on push to `main`.
 
 Ruff runs in CI as its own `lint` job (`ruff check src tests scripts`, must be clean) and ships in `[dev]`, so `uv run ruff check src tests scripts` locally uses the same version. `models/__init__.py` and `models/reports/__init__.py` ignore `F403` via `[tool.ruff.lint.per-file-ignores]` — they are pure re-export aggregators.
 

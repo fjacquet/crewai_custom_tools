@@ -39,7 +39,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # Sans ça, la chute d'une version annule les autres en cours de route : le log
+      # montre alors « The operation was canceled » sur des jobs qui allaient bien,
+      # et il faut fouiller pour retrouver lequel a réellement échoué.
+      fail-fast: false
       matrix:
+        # `requires-python = ">=3.12"` — ce sont les deux versions supportées.
         python-version: ["3.12", "3.13"]
 
     steps:

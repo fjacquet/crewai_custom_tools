@@ -53,7 +53,10 @@ jobs:
 
       - name: Build Documentation Site
         run: |
-          mkdocs build
+          # --strict : un fichier ajouté sous docs/ mais absent de la nav de mkdocs.yml
+          # devient une erreur, pas un avertissement. C'est ainsi que les deux documents
+          # de juillet ont pu rester invisibles du site sans que rien ne le signale.
+          mkdocs build --strict
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v5
