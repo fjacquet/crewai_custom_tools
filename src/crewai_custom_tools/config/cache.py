@@ -5,12 +5,12 @@ This module provides a simple file-based and memory caching system for API calls
 to avoid repeated requests and respect rate limits using SHA-256.
 """
 
-from functools import wraps
 import hashlib
 import json
 import logging
 import os
 import time
+from functools import wraps
 from pathlib import Path
 from typing import Any, Optional
 
@@ -44,7 +44,7 @@ class CacheManager:
         """Get the cache file path as a Path object for a given key."""
         return Path(self._get_filename(key))
 
-    def get(self, key: str, ttl: Optional[int] = None) -> Optional[Any]:
+    def get(self, key: str, ttl: int | None = None) -> Any | None:
         """
         Get a value from cache if it exists and hasn't expired.
 
@@ -98,7 +98,7 @@ class CacheManager:
 
         try:
             mtime = filepath.stat().st_mtime
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 data = json.load(f)
             val = data.get("value")
             timestamp = data.get("timestamp")
@@ -134,7 +134,7 @@ class CacheManager:
                 pass
         return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Store a value in cache with optional TTL."""
         effective_ttl = ttl if ttl is not None else self.default_ttl
         timestamp = time.time()
@@ -158,7 +158,7 @@ class CacheManager:
             except OSError:
                 pass
 
-    def clear_expired(self, ttl: Optional[int] = None) -> int:
+    def clear_expired(self, ttl: int | None = None) -> int:
         """Clear expired cache entries from memory and disk."""
         removed_count = 0
 
@@ -178,7 +178,7 @@ class CacheManager:
         # Clear expired files from disk
         for filepath in list(self.cache_dir.glob("*.json")):
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
+                with open(filepath, encoding="utf-8") as f:
                     data = json.load(f)
                 timestamp = data.get("timestamp")
                 expiry = data.get("expiry")

@@ -5,11 +5,11 @@ import json
 import os
 
 from crewai_custom_tools.core.results import err, ok
+from crewai_custom_tools.tools.osint.email_delegator import DelegatingEmailSearchTool
 from crewai_custom_tools.tools.web.places import GeoapifyPlacesTool
 from crewai_custom_tools.tools.web.rss_aggregator import RSSFeedTool, UnifiedRssTool
 from crewai_custom_tools.tools.web.tech_stack import TechStackTool
 from crewai_custom_tools.tools.web.wikipedia_processing import WikipediaProcessingTool
-from crewai_custom_tools.tools.osint.email_delegator import DelegatingEmailSearchTool
 
 
 def _env(result):

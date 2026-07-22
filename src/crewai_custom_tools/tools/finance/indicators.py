@@ -26,10 +26,10 @@ class TwelveDataIndicatorInput(BaseModel):
     symbol: str = Field(..., description="Ticker symbol, e.g. 'AAPL' or 'BTC/USD'.")
     indicator: str = Field("rsi", description="Indicator: 'rsi', 'macd', or 'bbands'.")
     interval: str = Field("1day", description="Time interval, e.g. '1day', '1h'.")
-    length: Optional[int] = Field(None, description="Period for rsi/bbands (time_period).")
-    fast_period: Optional[int] = Field(None, description="MACD fast period.")
-    slow_period: Optional[int] = Field(None, description="MACD slow period.")
-    signal_period: Optional[int] = Field(None, description="MACD signal period.")
+    length: int | None = Field(None, description="Period for rsi/bbands (time_period).")
+    fast_period: int | None = Field(None, description="MACD fast period.")
+    slow_period: int | None = Field(None, description="MACD slow period.")
+    signal_period: int | None = Field(None, description="MACD signal period.")
     outputsize: int = Field(100, description="Number of data points to return.")
 
 
@@ -49,10 +49,10 @@ class TwelveDataIndicatorTool(BaseTool):
         symbol: str,
         indicator: str = "rsi",
         interval: str = "1day",
-        length: Optional[int] = None,
-        fast_period: Optional[int] = None,
-        slow_period: Optional[int] = None,
-        signal_period: Optional[int] = None,
+        length: int | None = None,
+        fast_period: int | None = None,
+        slow_period: int | None = None,
+        signal_period: int | None = None,
         outputsize: int = 100,
     ) -> str:
         """Fetch a technical indicator series from Twelve Data."""
@@ -87,7 +87,7 @@ class TwelveDataMultiIndicatorInput(BaseModel):
 
     symbol: str = Field(..., description="Ticker symbol, e.g. 'AAPL' or 'BTC/USD'.")
     interval: str = Field("1day", description="Time interval, e.g. '1day', '1h'.")
-    indicators: Optional[List[str]] = Field(
+    indicators: list[str] | None = Field(
         None, description="Indicators to fetch; defaults to ['rsi', 'macd', 'bbands']."
     )
     rsi_period: int = Field(14, description="RSI period.")
@@ -114,7 +114,7 @@ class TwelveDataMultiIndicatorTool(BaseTool):
         self,
         symbol: str,
         interval: str = "1day",
-        indicators: Optional[List[str]] = None,
+        indicators: list[str] | None = None,
         rsi_period: int = 14,
         macd_fast: int = 12,
         macd_slow: int = 26,

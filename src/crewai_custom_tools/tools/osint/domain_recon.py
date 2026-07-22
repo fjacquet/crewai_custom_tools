@@ -87,18 +87,18 @@ class RDAPDomainTool(BaseTool):
         try:
             response = whodap.lookup_domain(sld, tld)
             whois = response.to_whois_dict()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning(f"RDAP lookup failed for {registrable}: {e}")
             return err(f"RDAP lookup failed: {e}")
 
-        def _stringify_date(value: Any) -> Optional[str]:
+        def _stringify_date(value: Any) -> str | None:
             if value is None:
                 return None
             if isinstance(value, datetime):
                 return value.isoformat()
             return str(value)
 
-        def _as_list(value: Any) -> List[str]:
+        def _as_list(value: Any) -> list[str]:
             return list(value) if isinstance(value, list) else []
 
         registrar = whois.get(WHOISKeys.REGISTRAR_NAME)

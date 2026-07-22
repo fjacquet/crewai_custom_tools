@@ -39,8 +39,8 @@ out to this top-level key). Fixed on both ends of the seam:
   pins a known, non-0.5 composite score through this path.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field

@@ -37,7 +37,7 @@ class GrampsConfig:
     password: str
 
     @staticmethod
-    def from_env() -> "GrampsConfig":
+    def from_env() -> GrampsConfig:
         try:
             return GrampsConfig(
                 api_url=os.environ["GRAMPS_API_URL"].rstrip("/"),

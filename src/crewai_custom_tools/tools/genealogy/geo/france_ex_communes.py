@@ -21,7 +21,11 @@ from crewai_custom_tools.core.rate_limiter import get_rate_limiter
 from crewai_custom_tools.tools.genealogy.geo.france import _FIELDS as _COMMUNE_FIELDS
 from crewai_custom_tools.tools.genealogy.geo.france import map_commune, pick_exact_by_name
 from crewai_custom_tools.tools.genealogy.models.domain import (
-    DatedChain, DatedName, ParsedPlace, PlaceLevel, ResolvedPlace,
+    DatedChain,
+    DatedName,
+    ParsedPlace,
+    PlaceLevel,
+    ResolvedPlace,
 )
 from crewai_custom_tools.tools.web.wikidata import sparql_rows
 

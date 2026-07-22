@@ -68,7 +68,7 @@ class HtmlGeneratorInput(BaseModel):
     """Input schema for HtmlGeneratorTool."""
 
     title: str = Field(..., description="Document title (also the <h1>).")
-    blocks: List[dict] = Field(
+    blocks: list[dict] = Field(
         ...,
         description=(
             "Ordered content blocks. Each is a dict with 'type' in "
@@ -90,7 +90,7 @@ class HtmlGeneratorTool(BaseTool):
     )
     args_schema: type[BaseModel] = HtmlGeneratorInput
 
-    def _run(self, title: str, blocks: List[dict]) -> str:
+    def _run(self, title: str, blocks: list[dict]) -> str:
         """Render the blocks into a full HTML document."""
         body_parts = [f"<h1>{escape(str(title))}</h1>"]
         for block in blocks or []:

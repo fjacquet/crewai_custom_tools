@@ -123,7 +123,7 @@ class AlphaVantageOverviewTool(BaseTool):
         if "Symbol" not in data:
             return err(f"No data returned for ticker {ticker}")
 
-        def _safe_float(val_str: Optional[str]) -> Optional[float]:
+        def _safe_float(val_str: str | None) -> float | None:
             if val_str is None or val_str in ("None", ""):
                 return None
             try:
@@ -131,7 +131,7 @@ class AlphaVantageOverviewTool(BaseTool):
             except (ValueError, TypeError):
                 return None
 
-        def _safe_str(val_str: Optional[str]) -> Optional[str]:
+        def _safe_str(val_str: str | None) -> str | None:
             if val_str is None or val_str in ("None", "-", ""):
                 return None
             return val_str

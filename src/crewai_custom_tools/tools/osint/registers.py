@@ -1,9 +1,11 @@
 """French Corporate Registries reconnaissance tools."""
 
 import logging
+
 import requests
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
+
 from crewai_custom_tools.core.decorators import api_tool
 from crewai_custom_tools.core.results import err, ok
 

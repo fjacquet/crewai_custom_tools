@@ -32,8 +32,8 @@ places it's reachable from — no divergence risk since both are written from
 the same local variable in the same statement.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any, Literal
 
 from crewai.tools import BaseTool

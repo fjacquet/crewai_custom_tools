@@ -27,7 +27,7 @@ class ExchangeRateTool(BaseTool):
 
     @api_tool(provider="OpenExchangeRates", endpoint="LatestRates")
     def _run(
-        self, base_currency: str = "USD", target_currencies: Optional[List[str]] = None
+        self, base_currency: str = "USD", target_currencies: list[str] | None = None
     ) -> str:
         """Fetch latest exchange rates."""
         api_key = os.getenv("OPENEXCHANGERATES_API_KEY")

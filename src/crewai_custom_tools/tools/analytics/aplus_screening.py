@@ -23,8 +23,8 @@ preserving (unlike ``APlusScoringTool``, which ``ScreeningRanking`` calls
 programmatically).
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any, Literal, cast
 
 from crewai.tools import BaseTool

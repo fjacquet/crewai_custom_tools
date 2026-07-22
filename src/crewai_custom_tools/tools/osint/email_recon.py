@@ -159,7 +159,7 @@ class HoleheEmailScannerTool(BaseTool):
 
         try:
             raw_results = trio.run(run_scan)
-        except Exception as e:  # noqa: BLE001 — import/exec failure is NOT "no accounts"
+        except Exception as e:
             logger.error(f"Holehe scan failed: {e}")
             return err(f"Holehe scan failed: {e}")
 

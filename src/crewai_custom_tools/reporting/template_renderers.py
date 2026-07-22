@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any, List
+
 from crewai_custom_tools.reporting.html_generator import RenderReportTool
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ class PestelReportRenderer(RenderReportTool):
         "Inputs require: title, sections (PESTEL elements list), and optional images and citations."
     )
 
-    def _run(self, title: str, sections: List[dict], **kwargs: Any) -> str:
+    def _run(self, title: str, sections: list[dict], **kwargs: Any) -> str:
         """Force the professional report template for PESTEL."""
         kwargs["template_name"] = "professional_report_template.html"
         return super()._run(title, sections, **kwargs)
@@ -31,7 +32,7 @@ class FinancialReportRenderer(RenderReportTool):
         "Inputs require: title, sections (financial indicators), and optional images and citations."
     )
 
-    def _run(self, title: str, sections: List[dict], **kwargs: Any) -> str:
+    def _run(self, title: str, sections: list[dict], **kwargs: Any) -> str:
         """Force the data report template for Financial tables."""
         kwargs["template_name"] = "data_report_template.html"
         return super()._run(title, sections, **kwargs)

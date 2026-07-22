@@ -14,7 +14,11 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from crewai_custom_tools.tools.genealogy.models.domain import (
-    DatedChain, DatedName, ParsedPlace, PlaceLevel, ResolvedPlace,
+    DatedChain,
+    DatedName,
+    ParsedPlace,
+    PlaceLevel,
+    ResolvedPlace,
 )
 
 _DATA = Path(__file__).resolve().parent.parent / "data" / "transitions.csv"

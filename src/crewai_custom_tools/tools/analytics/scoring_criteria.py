@@ -10,8 +10,8 @@ now come from :mod:`crewai_custom_tools.models.analytics_models`) and swapping
 the finwiz-specific logger for the stdlib ``logging`` module.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any, Literal, cast
 
 from crewai_custom_tools.models.analytics_models import MarketRegime, ScoringCriteria
