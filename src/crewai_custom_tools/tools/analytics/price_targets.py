@@ -543,10 +543,17 @@ def calculate_consensus_target(targets: list[PriceTarget], weights: list[float] 
             weights = [w / total_weight for w in weights]
 
         # Calculate weighted average target
-        consensus_price = sum(t.target_price * w for t, w in zip(valid_targets, weights))
+        # `weights` est toujours reconstruit ci-dessus à la même longueur que
+        # `valid_targets` (confiances, poids uniformes ou poids normalisés) :
+        # strict=True documente et vérifie cet invariant.
+        consensus_price = sum(
+            t.target_price * w for t, w in zip(valid_targets, weights, strict=True)
+        )
 
         # Calculate weighted average confidence
-        consensus_confidence = sum(t.confidence * w for t, w in zip(valid_targets, weights))
+        consensus_confidence = sum(
+            t.confidence * w for t, w in zip(valid_targets, weights, strict=True)
+        )
 
         # Get current price from first target
         current_price = valid_targets[0].current_price
