@@ -18,4 +18,6 @@ class HoleheScanInput(BaseModel):
 class OpenCorporatesSearchInput(BaseModel):
     """Input schema for OpenCorporatesSearchTool."""
     query: str = Field(..., description="The name of the company or registration ID to search for globally.")
-    jurisdiction_code: str | None = Field(None, description="Optional: 2-letter country or state code (e.g., 'us_ca', 'gb') to restrict search.")
+    jurisdiction_code: str | None = Field(
+        None, description="Optional: 2-letter country or state code (e.g., 'us_ca', 'gb') to restrict search."
+    )

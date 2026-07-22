@@ -116,7 +116,8 @@ class RenderReportTool(BaseTool):
     name: str = "render_html_report"
     description: str = (
         "Renders a standardized HTML report using a Jinja2 template and context values. "
-        "Inputs require: title, sections (list of dict with 'heading' and 'content'), and optional images and citations."
+        "Inputs require: title, sections (list of dict with 'heading' and 'content'), "
+        "and optional images and citations."
     )
     args_schema: type[BaseModel] = RenderReportToolSchema
 

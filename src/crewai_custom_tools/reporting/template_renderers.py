@@ -9,7 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class PestelReportRenderer(RenderReportTool):
-    """Specialized renderer for PESTEL Analysis (Political, Economic, Social, Technological, Environmental, Legal) reports."""
+    """Specialized renderer for PESTEL Analysis reports.
+
+    (Political, Economic, Social, Technological, Environmental, Legal.)
+    """
 
     name: str = "render_pestel_report"
     description: str = (
