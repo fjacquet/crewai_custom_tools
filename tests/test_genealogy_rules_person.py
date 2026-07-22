@@ -5,8 +5,8 @@ from crewai_custom_tools.tools.genealogy.models.domain import EventFact, PersonF
 
 
 def _p(**kw):
-    base = dict(gramps_id="I1", handle="h1", name="X", surname="X", given="x",
-                sex="M", has_any_citation=True)
+    base = {"gramps_id": "I1", "handle": "h1", "name": "X", "surname": "X", "given": "x",
+             "sex": "M", "has_any_citation": True}
     base.update(kw)
     return PersonFacts(**base)
 

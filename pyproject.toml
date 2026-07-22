@@ -86,3 +86,10 @@ ignore = [
 # would risk silently dropping one from the public surface.
 "src/crewai_custom_tools/models/__init__.py" = ["F403"]
 "src/crewai_custom_tools/models/reports/__init__.py" = ["F403"]
+
+# __all__ y est volontairement groupé par catégorie (Web, Finance, OSINT,
+# Genealogy, Reporting, Enterprise, File, Analytics, Core) — chaque groupe
+# reflète un sous-répertoire de tools/. Un tri alphabétique sur ~150 noms
+# disperserait ces groupes et effacerait cette structure documentaire sans
+# le moindre gain fonctionnel (l'ordre de __all__ n'affecte que `from x import *`).
+"src/crewai_custom_tools/__init__.py" = ["RUF022"]

@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Optional, TypeVar
+from typing import Optional
 
 import httpx
 import requests
@@ -104,14 +104,12 @@ class PerplexityStructuredTool(BaseTool):
         return ok({"content": content, "citations": citations})
 
 
-T = TypeVar("T", bound=BaseModel)
-
 _DEFAULT_STRUCTURED_SYSTEM = (
     "You are a research assistant. Provide concise, evidence-grounded answers with citations."
 )
 
 
-async def perplexity_structured(
+async def perplexity_structured[T: BaseModel](
     *,
     prompt: str,
     schema: type[T],
