@@ -124,7 +124,10 @@ class APlusScoringTool(BaseTool):
             # Calculate composite score with weights
             weights = get_scoring_weights(asset_type, market_regime)
             composite_score = (
-                fundamental_score * weights["fundamental"] + technical_score * weights["technical"] + quality_score * weights["quality"] + risk_score * weights["risk"]
+                fundamental_score * weights["fundamental"]
+                + technical_score * weights["technical"]
+                + quality_score * weights["quality"]
+                + risk_score * weights["risk"]
             )
 
             # Generate grade info
@@ -144,7 +147,9 @@ class APlusScoringTool(BaseTool):
             )
 
             # Generate A+ rationale
-            a_plus_rationale = generate_a_plus_rationale(symbol, asset_type, composite_score, strengths, weaknesses, market_regime)
+            a_plus_rationale = generate_a_plus_rationale(
+                symbol, asset_type, composite_score, strengths, weaknesses, market_regime
+            )
 
             # Calculate confidence level
             confidence_level = calculate_confidence_level(fundamental_data, market_regime, composite_score)
